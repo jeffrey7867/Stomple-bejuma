@@ -3,98 +3,112 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🌐 STOMPLE SOCIAL PRO</title>
+    <title>🌐 STOMPLE PRO - UNESR</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        :root { --bg: #0f172a; --accent: #38bdf8; --red: #ef4444; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: white; text-align: center; margin: 0; padding: 10px; overflow-x: hidden; }
+        :root { --bg: #0f172a; --accent: #38bdf8; --win: #22c55e; --loss: #ef4444; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: white; text-align: center; margin: 0; overflow-x: hidden; }
         
-        /* Pantallas */
-        #setup-screen { position: fixed; inset: 0; background: var(--bg); z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
-        #game-screen { display: none; }
-
+        /* Pantallas de Estado */
+        .overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.98); z-index: 2000; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+        .btn-main { background: var(--accent); color: #000; border: none; padding: 15px 30px; border-radius: 10px; font-weight: bold; cursor: pointer; margin-top: 20px; }
+        
         /* Selector de Color */
-        .color-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 25px 0; }
-        .color-opt { width: 60px; height: 60px; border-radius: 50%; border: 4px solid transparent; cursor: pointer; transition: 0.3s; position: relative; }
-        .color-opt.taken { opacity: 0.2; cursor: not-allowed; filter: grayscale(1); }
+        .color-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 20px 0; }
+        .color-opt { width: 55px; height: 55px; border-radius: 50%; border: 4px solid transparent; cursor: pointer; position: relative; }
+        .color-opt.taken { opacity: 0.2; filter: grayscale(1); cursor: not-allowed; }
         .color-opt.selected { border-color: white; transform: scale(1.1); box-shadow: 0 0 15px white; }
-        .taken-label { position: absolute; bottom: -18px; left: 50%; transform: translateX(-50%); font-size: 9px; color: var(--red); font-weight: bold; }
 
-        /* Marcador y Tablero */
-        #scoreboard { display: flex; justify-content: center; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; }
-        .p-card { background: #1e293b; padding: 8px; border-radius: 8px; border: 2px solid #334155; min-width: 65px; font-size: 0.8rem; }
-        .active-p { border-color: var(--accent); box-shadow: 0 0 10px var(--accent); }
-
+        /* Tablero y Fichas */
         #board { 
             display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; 
             width: 92vw; max-width: 420px; aspect-ratio: 1/1; 
             margin: 0 auto; background: #1e293b; padding: 10px; border-radius: 12px; position: relative;
         }
-
-        /* Canicas */
-        .marble { width: 100%; height: 100%; border-radius: 50%; cursor: pointer; transition: 0.2s; }
+        .marble { width: 100%; height: 100%; border-radius: 50%; cursor: pointer; position: relative; transition: 0.3s; }
+        .stomped { opacity: 0.1; transform: scale(0.8); pointer-events: none; }
+        
+        /* Colores Oficiales */
         .c1 { background: radial-gradient(circle, #ff4444, #880000); } .c2 { background: radial-gradient(circle, #44aaff, #004488); }
         .c3 { background: radial-gradient(circle, #ffbb00, #886600); } .c4 { background: radial-gradient(circle, #cc44ff, #6b21a8); }
         .c5 { background: radial-gradient(circle, #4ade80, #166534); } .c6 { background: radial-gradient(circle, #555555, #000000); }
-        .stomped { opacity: 0; pointer-events: none; }
-        .pos-indicator { border: 3px solid white; box-shadow: 0 0 10px white; z-index: 10; transform: scale(1.15); }
 
-        /* Emotes */
-        #emote-panel { margin: 15px 0; display: flex; justify-content: center; gap: 12px; }
-        .emote-btn { font-size: 1.6rem; background: #1e293b; border: 1px solid #334155; border-radius: 50%; width: 48px; height: 48px; cursor: pointer; }
-        .floating-emote { position: absolute; font-size: 4rem; animation: floatUp 2s forwards; left: 50%; top: 40%; transform: translateX(-50%); pointer-events: none; z-index: 100; }
-        @keyframes floatUp { 0% { opacity: 0; transform: translate(-50%, 20px); } 20% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -100px); } }
+        /* Fichas de Jugador */
+        .p-token { 
+            position: absolute; width: 85%; height: 85%; top: 7.5%; left: 7.5%;
+            border: 3px solid white; border-radius: 50%; font-weight: bold; font-size: 0.65rem;
+            display: flex; align-items: center; justify-content: center; z-index: 100;
+        }
+        .my-token { border-color: var(--accent); box-shadow: 0 0 15px var(--accent); animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
 
-        button#start-btn { background: var(--accent); color: #000; border: none; padding: 15px 35px; border-radius: 8px; font-weight: bold; cursor: pointer; }
-        .admin-btn { background: var(--red); color: white; border: none; padding: 8px 15px; border-radius: 5px; font-size: 0.7rem; margin-top: 20px; cursor: pointer; opacity: 0.6; }
+        /* Interfaz */
+        #how-to { font-size: 0.8rem; text-align: left; background: #1e293b; padding: 12px; border-radius: 8px; margin: 10px 0; border: 1px solid #334155; }
+        .admin-btn { display: none; background: var(--loss); color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; margin-top: 20px; font-size: 0.7rem; }
+        .es-admin .admin-btn { display: inline-block; }
+        .btn-exit { background: transparent; color: #64748b; border: 1px solid #334155; padding: 6px 12px; border-radius: 5px; cursor: pointer; margin-top: 10px; }
     </style>
 </head>
-<body>
+<body class="">
 
-    <div id="setup-screen">
-        <h1>🎨 STOMPLE BEJUMA</h1>
-        <p>Elige tu color de la bolsa:</p>
+    <div id="setup-screen" class="overlay" style="display: flex;">
+        <h1>🎨 STOMPLE ONLINE</h1>
+        <div id="how-to">
+            <b>Reglas Rápidas:</b><br>
+            • Entra por cualquier borde del tablero.<br>
+            • Salta a canicas adyacentes (incluye diagonales).<br>
+            • Si te encierran, salta a cualquier canica de TU color.
+        </div>
         <div class="color-grid" id="color-options"></div>
-        <button id="start-btn" disabled onclick="unirse()">ENTRAR A LA PARTIDA</button>
+        <button id="start-btn" class="btn-main" disabled onclick="unirse()">COMENZAR</button>
     </div>
 
-    <div id="game-screen">
-        <div id="scoreboard"></div>
-        <div id="game-container" style="position:relative; display:inline-block;">
-            <div id="board"></div>
-            <div id="emote-display"></div>
-        </div>
-        <div id="emote-panel">
-            <button class="emote-btn" onclick="sendEmote('😂')">😂</button>
-            <button class="emote-btn" onclick="sendEmote('🔥')">🔥</button>
-            <button class="emote-btn" onclick="sendEmote('😎')">😎</button>
-            <button class="emote-btn" onclick="sendEmote('🎯')">🎯</button>
-        </div>
-        <div id="msg" style="font-weight:bold; color:var(--accent);">Sincronizando...</div>
-        <button class="admin-btn" onclick="resetTotal()">REINICIAR TODO (ADMIN)</button>
+    <div id="end-screen" class="overlay">
+        <h1 id="end-title"></h1>
+        <p id="end-msg"></p>
+        <button class="btn-main" onclick="location.reload()">REINTENTAR</button>
+    </div>
+
+    <div id="game-ui" style="padding: 10px;">
+        <div id="scoreboard" style="display:flex; justify-content:center; gap:8px; margin-bottom:10px;"></div>
+        <div id="board"></div>
+        <div id="msg" style="margin: 15px; font-weight: bold; color: var(--accent);">Esperando...</div>
+        
+        <button class="btn-exit" onclick="salir()">Abandonar Partida</button><br>
+        <button class="admin-btn" onclick="resetAdmin()">🧹 LIMPIAR SALA (ADMIN)</button>
     </div>
 
     <script>
+        // Configuración de tu Firebase
         const firebaseConfig = { databaseURL: "https://stomple-default-rtdb.firebaseio.com/" };
         firebase.initializeApp(firebaseConfig);
-        const db = firebase.database().ref('stomple_vBejuma_Final');
+        const db = firebase.database().ref('stomple_bejuma_vFinal');
 
-        let myId = localStorage.getItem('stomple_id') || "U" + Math.floor(Math.random() * 9999);
+        // Identificación persistente (Se guarda en tu Redmi)
+        let myId = localStorage.getItem('stomple_id') || "U-" + Math.floor(Math.random() * 9999);
         localStorage.setItem('stomple_id', myId);
         
+        // ACTIVAR ADMIN: Cambia esto por tu ID real tras la primera ejecución
+        const ADMIN_ID = myId; 
+        if(myId === ADMIN_ID) document.body.classList.add('es-admin');
+
         let selectedColor = null;
         let gameState = null;
 
-        // Escuchar Firebase
         db.on('value', (snap) => {
             gameState = snap.val() || { players: {}, tablero: null, turno: 0 };
             
             if (gameState.players && gameState.players[myId]) {
                 document.getElementById('setup-screen').style.display = 'none';
-                document.getElementById('game-screen').style.display = 'block';
+                if (gameState.players[myId].status === 'out') {
+                    showEnd('DERROTA', 'Te has quedado sin movimientos válidos.');
+                } else {
+                    checkWin();
+                }
                 renderGame();
             } else {
+                document.getElementById('setup-screen').style.display = 'flex';
                 renderSelector();
             }
         });
@@ -103,10 +117,109 @@
             const container = document.getElementById('color-options');
             container.innerHTML = '';
             const taken = Object.values(gameState.players || {}).map(p => p.color);
-
             for (let i = 1; i <= 6; i++) {
                 const isTaken = taken.includes(i);
                 const opt = document.createElement('div');
+                opt.className = `color-opt c${i} ${isTaken ? 'taken' : ''} ${selectedColor === i ? 'selected' : ''}`;
+                if (!isTaken) opt.onclick = () => { selectedColor = i; document.getElementById('start-btn').disabled = false; renderSelector(); };
+                container.appendChild(opt);
+            }
+        }
+
+        function unirse() {
+            if (!gameState.tablero) {
+                let t = Array.from({length:10}, () => Array.from({length:10}, () => Math.floor(Math.random()*6)+1));
+                db.child('tablero').set(t);
+            }
+            db.child('players/' + myId).set({ color: selectedColor, pos: {r:-1, c:-1}, status: 'active' });
+        }
+
+        function renderGame() {
+            const boardEl = document.getElementById('board');
+            const scoreEl = document.getElementById('scoreboard');
+            boardEl.innerHTML = ''; scoreEl.innerHTML = '';
+            const keys = Object.keys(gameState.players);
+
+            keys.forEach((id, i) => {
+                const p = gameState.players[id];
+                scoreEl.innerHTML += `<div style="padding:5px; border-bottom:3px solid ${gameState.turno===i?var(--accent):'transparent'}">P${i+1}</div>`;
+            });
+
+            gameState.tablero.forEach((fila, r) => {
+                fila.forEach((color, c) => {
+                    const m = document.createElement('div');
+                    m.className = `marble c${color} ${color === 0 ? 'stomped' : ''}`;
+                    
+                    // Dibujar fichas (Stomples)
+                    keys.forEach((id, idx) => {
+                        const p = gameState.players[id];
+                        if(p.pos.r === r && p.pos.c === c) {
+                            const token = document.createElement('div');
+                            token.className = `p-token c${p.color} ${id === myId ? 'my-token' : ''}`;
+                            token.innerText = id === myId ? 'YO' : `P${idx+1}`;
+                            m.appendChild(token);
+                        }
+                    });
+
+                    m.onclick = () => procesarMovimiento(r, c, keys);
+                    boardEl.appendChild(m);
+                });
+            });
+            
+            document.getElementById('msg').innerText = (keys[gameState.turno] === myId) ? "⭐ ¡TU TURNO! ⭐" : "Esperando movimiento...";
+        }
+
+        function procesarMovimiento(r, c, keys) {
+            if (keys[gameState.turno] !== myId) return;
+            const miPos = gameState.players[myId].pos;
+            const esAdy = Math.abs(miPos.r - r) <= 1 && Math.abs(miPos.c - c) <= 1;
+
+            if (miPos.r === -1) {
+                if (r!==0 && r!==9 && c!==0 && c!==9) return; // Solo borde al inicio
+            } else {
+                if (!esAdy && gameState.tablero[r][c] !== selectedColor) return; // Vuelo solo a tu color
+            }
+
+            let nuevoTab = JSON.parse(JSON.stringify(gameState.tablero));
+            const colorTocado = nuevoTab[r][c];
+            
+            function hundir(row, col) {
+                if (row<0 || row>=10 || col<0 || col>=10 || nuevoTab[row][col] !== colorTocado) return;
+                nuevoTab[row][col] = 0;
+                hundir(row+1, col); hundir(row-1, col); hundir(row, col+1); hundir(row, col-1);
+            }
+            hundir(r, c);
+
+            db.update({
+                tablero: nuevoTab,
+                turno: (gameState.turno + 1) % keys.length,
+                [`players/${myId}/pos`]: {r, c}
+            });
+        }
+
+        function checkWin() {
+            const actives = Object.values(gameState.players).filter(p => p.status === 'active');
+            if (actives.length === 1 && actives[0].color === selectedColor && Object.keys(gameState.players).length > 1) {
+                showEnd('VICTORIA', '¡Has ganado la partida!');
+            }
+        }
+
+        function showEnd(tit, msg) {
+            const screen = document.getElementById('end-screen');
+            screen.style.display = 'flex';
+            document.getElementById('end-title').innerText = tit;
+            document.getElementById('end-title').style.color = tit === 'VICTORIA' ? 'var(--win)' : 'var(--loss)';
+            document.getElementById('end-msg').innerText = msg;
+        }
+
+        function resetAdmin() {
+            if(confirm("¿Limpiar toda la sala?")) db.set(null).then(() => location.reload());
+        }
+
+        function salir() { if(confirm("¿Salir?")) db.child('players/' + myId).remove().then(() => location.reload()); }
+    </script>
+</body>
+</html>
                 opt.className = `color-opt c${i} ${isTaken ? 'taken' : ''} ${selectedColor === i ? 'selected' : ''}`;
                 if (!isTaken) {
                     opt.onclick = () => { selectedColor = i; document.getElementById('start-btn').disabled = false; renderSelector(); };
