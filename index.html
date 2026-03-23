@@ -3,48 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Stomple UNESR Pro</title>
+    <title>Stomple Pro</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div id="setup-screen" class="screen">
-        <h1 class="logo">STOMPLE <span>UNESR</span></h1>
-        <div id="color-opts" class="color-grid"></div>
-        <button id="join-btn" disabled onclick="unirse()" class="btn-main">ENTRAR A JUGAR</button>
+        <h1 class="logo">STOMPLE</h1>
+        <div id="color-opts" class="grid-picker"></div>
+        <button id="join-btn" disabled onclick="unirse()" class="btn-primary">ENTRAR</button>
     </div>
 
     <div id="game-ui" class="screen" style="display:none;">
-        <div class="header">
-            <div class="info">
-                <span id="my-dot" class="dot-indicator"></span>
-                <span id="status-msg">Cargando...</span>
-            </div>
+        <header class="app-bar">
+            <span id="status-msg">Cargando...</span>
             <button onclick="salir()" class="btn-exit">SALIR</button>
-        </div>
+        </header>
 
-        <div class="board-container">
+        <main class="board-zone">
             <div id="board"></div>
-        </div>
+        </main>
 
-        <div class="footer">
-            <div id="chat-box" class="chat-bar">¡Bienvenidos al juego!</div>
-            <div class="emotes">
-                <button onclick="sendEmoji('😂')">😂</button>
-                <button onclick="sendEmoji('🔥')">🔥</button>
-                <button onclick="sendEmoji('😱')">😱</button>
-                <button onclick="sendEmoji('🤫')">🤫</button>
+        <footer class="controls">
+            <div id="chat-box" class="chat-text">¡Suerte!</div>
+            <div class="emote-row">
+                <button onclick="enviarAccion('😂')">😂</button>
+                <button onclick="enviarAccion('🔥')">🔥</button>
+                <button onclick="enviarAccion('😱')">😱</button>
+                <button onclick="enviarAccion('🤫')">🤫</button>
             </div>
-            
-            <div id="admin-panel" class="host-tools" style="display:none;">
-                <p>HERRAMIENTAS DE HOST</p>
-                <div id="kick-list" class="kick-buttons"></div>
-                <button onclick="reiniciarTodo()" class="btn-reset">REINICIAR TABLERO</button>
+            <div id="admin-panel" style="display:none;" class="host-box">
+                <div id="kick-list" class="kicks"></div>
+                <button onclick="reiniciarTodo()" class="btn-reset">REINICIAR</button>
             </div>
-        </div>
+        </footer>
     </div>
-
     <script src="script.js"></script>
 </body>
 </html>
