@@ -3,42 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>🌐 STOMPLE UNESR - FIX</title>
+    <title>🌐 STOMPLE UNESR - ADMIN PANEL</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        :root { --bg: #0f172a; --accent: #38bdf8; --win: #22c55e; --loss: #ef4444; --chat-bg: #1e293b; }
+        :root { --bg: #0f172a; --accent: #38bdf8; --win: #22c55e; --loss: #ef4444; --chat-bg: #1e293b; --admin: #f59e0b; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: white; text-align: center; margin: 0; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
         
-        /* Capas y UI */
+        /* UI General */
         .overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.98); z-index: 2000; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
         .btn-main { background: var(--accent); color: #000; border: none; padding: 12px 25px; border-radius: 8px; font-weight: bold; cursor: pointer; }
 
-        /* Tablero */
-        #board-container { position: relative; display: inline-block; margin: 0 auto; }
-        #board { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; width: 92vw; max-width: 380px; aspect-ratio: 1/1; background: #334155; padding: 8px; border-radius: 10px; }
+        /* Tablero y Fichas */
+        #board { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; width: 92vw; max-width: 380px; aspect-ratio: 1/1; margin: 0 auto; background: #334155; padding: 8px; border-radius: 10px; position: relative; }
         .marble { width: 100%; height: 100%; border-radius: 50%; cursor: pointer; position: relative; transition: 0.2s; }
         .stomped { opacity: 0.1; transform: scale(0.7); pointer-events: none; }
-        
-        /* Colores y Fichas */
-        .c1 { background: radial-gradient(circle, #ff4444, #880000); } .c2 { background: radial-gradient(circle, #44aaff, #004488); }
-        .c3 { background: radial-gradient(circle, #ffbb00, #886600); } .c4 { background: radial-gradient(circle, #cc44ff, #6b21a8); }
-        .c5 { background: radial-gradient(circle, #4ade80, #166534); } .c6 { background: radial-gradient(circle, #555555, #000000); }
         .p-token { position: absolute; width: 85%; height: 85%; top: 7.5%; left: 7.5%; border: 2px solid white; border-radius: 50%; font-weight: bold; font-size: 0.55rem; display: flex; align-items: center; justify-content: center; z-index: 100; box-shadow: 0 0 5px black; }
         .my-token { border-color: var(--accent); box-shadow: 0 0 10px var(--accent); animation: pulse 1.5s infinite; }
         @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
 
-        /* Emotes */
+        /* PANEL DE ADMINISTRACIÓN */
+        #admin-panel { display: none; background: #1e293b; border-top: 2px solid var(--admin); padding: 10px; position: fixed; bottom: 0; width: 100%; z-index: 1000; box-shadow: 0 -5px 15px rgba(0,0,0,0.5); }
+        .admin-title { font-size: 0.7rem; color: var(--admin); font-weight: bold; text-transform: uppercase; margin-bottom: 8px; display: block; }
+        .admin-tools { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 5px; justify-content: center; }
+        .btn-admin { background: #334155; color: white; border: 1px solid var(--admin); padding: 5px 10px; border-radius: 4px; font-size: 0.65rem; cursor: pointer; white-space: nowrap; }
+        .btn-kick { background: var(--loss); border: none; }
+
+        /* Chat y Emotes */
+        #chat-section { flex-grow: 1; background: var(--chat-bg); margin: 5px 10px; border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; max-height: 120px; border: 1px solid #334155; margin-bottom: 80px; /* Espacio para el panel admin */ }
+        #chat-box { flex-grow: 1; overflow-y: auto; padding: 8px; text-align: left; font-size: 0.75rem; }
+        #reaction-bar { display: flex; justify-content: center; gap: 8px; margin: 5px 0; }
         .emote-pop { position: absolute; font-size: 3rem; animation: floatUp 2s forwards; pointer-events: none; z-index: 500; left: 50%; top: 40%; transform: translateX(-50%); }
         @keyframes floatUp { 0% { opacity:0; transform:translate(-50%, 20px); } 20% { opacity:1; } 100% { opacity:0; transform:translate(-50%, -100px); } }
-
-        /* Chat y Reacciones */
-        #reaction-bar { display: flex; justify-content: center; gap: 8px; margin: 5px 0; }
-        .react-btn { font-size: 1.2rem; background: #1e293b; border: 1px solid #334155; border-radius: 50%; width: 38px; height: 38px; cursor: pointer; }
-        #chat-section { flex-grow: 1; background: var(--chat-bg); margin: 5px 10px; border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; max-height: 140px; border: 1px solid #334155; }
-        #chat-box { flex-grow: 1; overflow-y: auto; padding: 8px; text-align: left; font-size: 0.75rem; color: #cbd5e1; }
-        #chat-input-area { display: flex; padding: 4px; background: #0f172a; }
-        #chat-input { flex-grow: 1; background: #334155; border: none; color: white; padding: 6px; border-radius: 5px; outline: none; }
     </style>
 </head>
 <body>
@@ -46,7 +42,7 @@
     <div id="setup-screen" class="overlay" style="display: flex;">
         <h2>🎨 STOMPLE ONLINE</h2>
         <div id="color-options" style="display:grid; grid-template-columns: repeat(3, 1fr); gap:15px; margin:20px;"></div>
-        <button id="start-btn" class="btn-main" disabled onclick="unirse()">ENTRAR A JUGAR</button>
+        <button id="start-btn" class="btn-main" disabled onclick="unirse()">COMENZAR</button>
     </div>
 
     <div id="game-ui" style="display:none; flex-direction: column; height: 100%;">
@@ -55,7 +51,7 @@
             <button onclick="salir()" style="background:var(--loss); border:none; color:white; padding:4px 10px; border-radius:4px; font-size:0.7rem;">SALIR</button>
         </div>
 
-        <div id="board-container">
+        <div id="board-container" style="position:relative;">
             <div id="board"></div>
             <div id="emote-layer"></div>
         </div>
@@ -63,17 +59,25 @@
         <div id="msg" style="margin: 5px; font-weight: bold; color: var(--accent); font-size: 0.85rem;">Sincronizando...</div>
 
         <div id="reaction-bar">
-            <button class="react-btn" onclick="sendEmote('😂')">😂</button>
-            <button class="react-btn" onclick="sendEmote('🔥')">🔥</button>
-            <button class="react-btn" onclick="sendEmote('😱')">😱</button>
-            <button class="react-btn" onclick="sendEmote('🎯')">🎯</button>
+            <button style="background:none; border:none; font-size:1.2rem;" onclick="sendEmote('😂')">😂</button>
+            <button style="background:none; border:none; font-size:1.2rem;" onclick="sendEmote('🔥')">🔥</button>
+            <button style="background:none; border:none; font-size:1.2rem;" onclick="sendEmote('😱')">😱</button>
+            <button style="background:none; border:none; font-size:1.2rem;" onclick="sendEmote('😎')">😎</button>
         </div>
 
         <div id="chat-section">
             <div id="chat-box"></div>
-            <div id="chat-input-area">
-                <input type="text" id="chat-input" placeholder="Chat..." onkeypress="if(event.key==='Enter') sendChat()">
-                <button onclick="sendChat()" style="background:var(--accent); border:none; padding: 0 12px; border-radius:5px;">➔</button>
+            <div id="chat-input-area" style="display:flex; padding:4px; background:#0f172a;">
+                <input type="text" id="chat-input" placeholder="Chat..." style="flex-grow:1; background:#334155; border:none; color:white; padding:6px; border-radius:5px;" onkeypress="if(event.key==='Enter') sendChat()">
+            </div>
+        </div>
+
+        <div id="admin-panel">
+            <span class="admin-title">🛠️ Panel de Control del Host</span>
+            <div class="admin-tools">
+                <button class="btn-admin" onclick="resetBoard()">🔄 Reiniciar Tablero</button>
+                <button class="btn-admin" onclick="clearRoom()">🧹 Limpiar Sala</button>
+                <div id="player-list-admin" style="display:flex; gap:5px;"></div>
             </div>
         </div>
     </div>
@@ -81,24 +85,36 @@
     <script>
         const firebaseConfig = { databaseURL: "https://stomple-default-rtdb.firebaseio.com/" };
         firebase.initializeApp(firebaseConfig);
-        const db = firebase.database().ref('stomple_unesr_vFixed_Numbers');
+        const db = firebase.database().ref('stomple_unesr_admin_v1');
 
         let myId = localStorage.getItem('stomple_id') || "U-" + Math.floor(Math.random() * 9999);
         localStorage.setItem('stomple_id', myId);
         
-        let gameState = { players: {}, tablero: null, turno: 0, chat: [], lastEmote: "" };
+        let gameState = { players: {}, tablero: null, turno: 0, host: null };
 
         db.on('value', (snap) => {
             const data = snap.val();
             if (data) {
                 if (data.lastEmote && data.lastEmote !== gameState.lastEmote) showFloatingEmote(data.lastEmote.split('_')[0]);
                 gameState = data;
+                
+                // Si el jugador actual es el host, mostramos el panel admin
+                if (gameState.host === myId) {
+                    document.getElementById('admin-panel').style.display = 'block';
+                }
+
+                // Si hemos sido expulsados
+                if (gameState.players && !gameState.players[myId] && document.getElementById('game-ui').style.display === 'flex') {
+                    alert("Has sido expulsado de la sala.");
+                    location.reload();
+                }
             }
             if (gameState.players && gameState.players[myId]) {
                 document.getElementById('setup-screen').style.display = 'none';
                 document.getElementById('game-ui').style.display = 'flex';
                 renderGame();
                 renderChat();
+                renderAdminPlayers();
             } else {
                 document.getElementById('setup-screen').style.display = 'flex';
                 renderSelector();
@@ -107,6 +123,136 @@
 
         function renderSelector() {
             const container = document.getElementById('color-options');
+            container.innerHTML = '';
+            const taken = Object.values(gameState.players || {}).map(p => p.color);
+            for (let i = 1; i <= 6; i++) {
+                const opt = document.createElement('div');
+                const isTaken = taken.includes(i);
+                opt.className = `color-opt c${i} ${isTaken?'taken':''}`;
+                opt.style.width="50px"; opt.style.height="50px"; opt.style.borderRadius="50%"; opt.style.border="4px solid transparent";
+                if(!isTaken) opt.onclick = () => { 
+                    selectedColor = i; 
+                    document.getElementById('start-btn').disabled = false;
+                    container.querySelectorAll('.color-opt').forEach(o => o.style.borderColor = 'transparent');
+                    opt.style.borderColor = 'white';
+                };
+                container.appendChild(opt);
+            }
+        }
+
+        async function unirse() {
+            let updates = {};
+            if (!gameState.tablero) {
+                updates['tablero'] = Array.from({length:10}, () => Array.from({length:10}, () => Math.floor(Math.random()*6)+1));
+                updates['turno'] = 0;
+                updates['host'] = myId; // El primero que entra es el Host
+            }
+            
+            const pNum = Object.keys(gameState.players || {}).length + 1;
+            updates['players/' + myId] = { color: selectedColor, pos: {r:-1, c:-1}, pNum: pNum };
+            db.update(updates);
+        }
+
+        function renderGame() {
+            const boardEl = document.getElementById('board');
+            boardEl.innerHTML = '';
+            const keys = Object.keys(gameState.players);
+            const scoreboard = document.getElementById('scoreboard');
+            scoreboard.innerHTML = '';
+
+            keys.forEach((id, i) => {
+                const p = gameState.players[id];
+                scoreboard.innerHTML += `<div style="padding:2px 8px; background:#1e293b; border-radius:4px; font-size:0.6rem; border-bottom:2px solid ${gameState.turno===i?'#38bdf8':'transparent'}">P${p.pNum}</div>`;
+            });
+
+            gameState.tablero.forEach((fila, r) => {
+                fila.forEach((color, c) => {
+                    const m = document.createElement('div');
+                    m.className = `marble c${color} ${color === 0 ? 'stomped' : ''}`;
+                    keys.forEach((id) => {
+                        const p = gameState.players[id];
+                        if(p && p.pos.r === r && p.pos.c === c) {
+                            const token = document.createElement('div');
+                            token.className = `p-token c${p.color} ${id === myId ? 'my-token' : ''}`;
+                            token.innerText = id === myId ? 'YO' : `P${p.pNum}`;
+                            m.appendChild(token);
+                        }
+                    });
+                    m.onclick = () => procesarMovimiento(r, c, keys);
+                    boardEl.appendChild(m);
+                });
+            });
+            document.getElementById('msg').innerText = (keys[gameState.turno] === myId) ? "⭐ TU TURNO ⭐" : "Esperando...";
+        }
+
+        function procesarMovimiento(r, c, keys) {
+            if (keys[gameState.turno] !== myId) return;
+            const miInfo = gameState.players[myId];
+            const esAdy = Math.abs(miInfo.pos.r - r) <= 1 && Math.abs(miInfo.pos.c - c) <= 1;
+            if (miInfo.pos.r === -1) { if (r!==0 && r!==9 && c!==0 && c!==9) return; }
+            else { if (!esAdy && gameState.tablero[r][c] !== miInfo.color) return; }
+
+            let nuevoTab = JSON.parse(JSON.stringify(gameState.tablero));
+            const target = nuevoTab[r][c];
+            function hundir(row, col) {
+                if (row<0 || row>=10 || col<0 || col>=10 || nuevoTab[row][col]!==target || nuevoTab[row][col]===0) return;
+                nuevoTab[row][col] = 0;
+                hundir(row+1, col); hundir(row-1, col); hundir(row, col+1); hundir(row, col-1);
+            }
+            hundir(r, c);
+            db.update({ tablero: nuevoTab, turno: (gameState.turno + 1) % keys.length, [`players/${myId}/pos`]: {r, c} });
+        }
+
+        // HERRAMIENTAS DE ADMINISTRACIÓN
+        function renderAdminPlayers() {
+            const container = document.getElementById('player-list-admin');
+            container.innerHTML = '';
+            Object.keys(gameState.players).forEach(id => {
+                if (id !== myId) {
+                    const btn = document.createElement('button');
+                    btn.className = 'btn-admin btn-kick';
+                    btn.innerText = `Sacar P${gameState.players[id].pNum}`;
+                    btn.onclick = () => { if(confirm("¿Expulsar a este jugador?")) db.child('players/'+id).remove(); };
+                    container.appendChild(btn);
+                }
+            });
+        }
+
+        function resetBoard() {
+            if(confirm("¿Reiniciar el tablero?")) {
+                const t = Array.from({length:10}, () => Array.from({length:10}, () => Math.floor(Math.random()*6)+1));
+                db.child('tablero').set(t);
+                db.child('turno').set(0);
+            }
+        }
+
+        function clearRoom() { if(confirm("¿Limpiar toda la sala?")) db.set(null).then(() => location.reload()); }
+
+        // CHAT Y EMOTES
+        function sendChat() {
+            const input = document.getElementById('chat-input');
+            if (!input.value.trim()) return;
+            const chats = gameState.chat || [];
+            chats.push({ u: `P${gameState.players[myId].pNum}`, t: input.value });
+            if (chats.length > 15) chats.shift();
+            db.child('chat').set(chats);
+            input.value = "";
+        }
+        function renderChat() {
+            const box = document.getElementById('chat-box');
+            box.innerHTML = (gameState.chat || []).map(m => `<div><span style="color:var(--accent)">${m.u}:</span> ${m.t}</div>`).join('');
+            box.scrollTop = box.scrollHeight;
+        }
+        function sendEmote(e) { db.child('lastEmote').set(e + "_" + Math.random()); }
+        function showFloatingEmote(e) {
+            const el = document.createElement('div'); el.className = 'emote-pop'; el.innerText = e;
+            document.getElementById('emote-layer').appendChild(el);
+            setTimeout(() => el.remove(), 2000);
+        }
+        function salir() { if(confirm("¿Salir?")) db.child('players/' + myId).remove().then(() => location.reload()); }
+    </script>
+</body>
+</html>
             container.innerHTML = '';
             const taken = Object.values(gameState.players || {}).map(p => p.color);
             for (let i = 1; i <= 6; i++) {
