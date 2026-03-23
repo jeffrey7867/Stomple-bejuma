@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌐 STOMPLE SOCIAL PRO</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <style>
+        :root { --bg: #0f172a; --accent: #38bdf8; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: white; text-align: center; margin: 0; padding: 10px; }
+        
+        /* Pantalla de Selección */
+        #setup-screen { position: fixed; inset: 0; background: var(--bg); z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+        .color-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 20px 0; }
+        .color-opt { width: 60px; height: 60px; border-radius: 50%; border: 4px solid transparent; cursor: pointer; transition: 0.3s; position: relative; }
+        .color-opt.taken { opacity: 0.2; cursor: not-allowed; filter: grayscale(1); }
+        .color-opt.selected { border-color: white; transform: scale(1.1); box-shadow: 0 0 15px white; }
+        .taken-label { position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%); font-size: 10px; color: #ef4444; }
+
+        /* Juego */
+        #scoreboard { display: flex; justify-content: center; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; }
+        .player-card { background: #1e293b; padding: 10px; border-radius: 10px; border: 2px solid #334155; min-width: 70px; }
+        .active-p { border-color: var(--accent); box-shadow: 0 0 15px var(--accent); }
+        
+        #board { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; width: 90vw; max-width: 420px; aspect-ratio: 1/1; margin: 0 auto; background: #1e293b; padding: 12px; border-radius: 15px; }
+        .marble { width: 100%; height: 100%; border-radius: 50%; cursor: pointer; position: relative; }
+        .stomped { opacity: 0; pointer-events: none; }
+        .pos-indicator { border: 3px solid white; box-shadow: 0 0 10px white; z-index: 10; transform: scale(1.1); }
+
+        .color-1 { background: radial-gradient(circle, #ff4444, #880000); } .color-2 { background: radial-gradient(circle, #44aaff, #004488); }
+        .color-3 { background: radial-gradient(circle, #ffbb00, #886600); } .color-4 { background: radial-gradient(circle, #cc44ff, #6b21a8); }
+        .color-5 { background: radial-gradient(circle, #4ade80, #166534); } .color-6 { background: radial-gradient(circle, #555555, #000000); }
+
+        button { background: var(--accent); color: #000; border: none; padding: 12px 25px; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .btn-reset { background: #ef4444; color: white; }
+    </style>
+</head>
+<body>
+
+    <div id="setup-screen">
+        <h2>🎨 Elige tu Color</h2>
+        <div class="color-grid" id="color-options">
+            </div>
+        <button id="start-btn" disabled onclick="entrarAlJuego()">ENTRAR A LA PARTIDA</button>
+    </div>
+
+    <h1>🌐 STOMPLE SOCIAL</h1>
+    <div id="scoreboard"></div>
+    <div id="board"></div>
+    <div id="msg">Esperando...</div>
+    <button class="btn-reset" onclick="reiniciarPartida()">REINICIAR TABLERO</button>
+
+    <script>
+        const firebaseConfig = { databaseURL: "https://stomple-default-rtdb.firebaseio.com/" };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database().ref('stomple_vBejuma_Final');
+
+        // 1. Identificación persistente
+        let myId = localStorage.getItem('stomple_id') || "user_" + Math.floor(Math.random() * 99999);
+        localStorage.setItem('stomple_id', myId);
+
+        let selectedColor = null;
+        let gameState = null;
+
+        // Escuchar cambios globales
+        db.on('value', (snap) => {
+            gameState = snap.val() || { players: {}, tablero: null, turno: 0 };
+            actualizarSelectorColores();
+            
+            if (gameState.players[myId] && gameState.tablero) {
+                document.getElementById('setup-screen').style.display = 'none';
+                renderJuego();
+            }
+        });
+
+        function actualizarSelectorColores() {
+            const container = document.getElementById('color-options');
+            container.innerHTML = '';
+            const takenColors = Object.values(gameState.players).map(p => p.color);
+
+            for (let i = 1; i <= 6; i++) {
+                const isTaken = takenColors.includes(i) && gameState.players[myId]?.color !== i;
+                const opt = document.createElement('div');
+                opt.className = `color-opt color-${i} ${isTaken ? 'taken' : ''} ${selectedColor === i ? 'selected' : ''}`;
+                
+                if (!isTaken) {
+                    opt.onclick = () => {
+                        selectedColor = i;
+                        document.getElementById('start-btn').disabled = false;
+                        actualizarSelectorColores();
+                    };
+                } else {
+                    opt.innerHTML = '<span class="taken-label">OCUPADO</span>';
+                }
+                container.appendChild(opt);
+            }
+        }
+
+        function entrarAlJuego() {
+            if (!gameState.tablero) {
+                // Si eres el primero, generas el tablero
+                reiniciarPartida(true); 
+            }
+            db.child('players/' + myId).update({
+                color: selectedColor,
+                pos: {r: -1, c: -1},
+                status: 'active'
+            });
+        }
+
+        function renderJuego() {
+            const boardEl = document.getElementById('board');
+            const scoreEl = document.getElementById('scoreboard');
+            boardEl.innerHTML = '';
+            scoreEl.innerHTML = '';
+
+            const keys = Object.keys(gameState.players);
+            keys.forEach((id, i) => {
+                const p = gameState.players[id];
+                const card = document.createElement('div');
+                card.className = `player-card ${gameState.turno === i ? 'active-p' : ''}`;
+                card.innerHTML = `<small>P${i+1}</small><div class="marble color-${p.color}" style="height:15px; width:15px; margin:5px auto"></div>`;
+                scoreEl.appendChild(card);
+            });
+
+            const myTurnIdx = keys.indexOf(myId);
+            document.getElementById('msg').innerText = (gameState.turno === myTurnIdx) ? "⭐ ¡TU TURNO! ⭐" : "Esperando a tus amigos...";
+
+            gameState.tablero.forEach((fila, r) => {
+                fila.forEach((color, c) => {
+                    const m = document.createElement('div');
+                    m.className = `marble color-${color} ${color === 0 ? 'stomped' : ''}`;
+                    keys.forEach(id => {
+                        if(gameState.players[id].pos.r === r && gameState.players[id].pos.c === c) m.classList.add('pos-indicator');
+                    });
+                    m.onclick = () => mover(r, c, keys);
+                    boardEl.appendChild(m);
+                });
+            });
+        }
+
+        function mover(r, c, keys) {
+            const myTurnIdx = keys.indexOf(myId);
+            if (gameState.turno !== myTurnIdx) return;
+
+            const miPos = gameState.players[myId].pos;
+            const esAdyacente = Math.abs(miPos.r - r) <= 1 && Math.abs(miPos.c - c) <= 1;
+            const esBorde = (r === 0 || r === 9 || c === 0 || c === 9);
+
+            if (miPos.r === -1 && !esBorde) return;
+            if (miPos.r !== -1 && !esAdyacente && gameState.tablero[r][c] !== selectedColor) return;
+
+            let nuevoTab = JSON.parse(JSON.stringify(gameState.tablero));
+            const colorTocado = nuevoTab[r][c];
+            
+            function sink(row, col) {
+                if (row<0 || row>=10 || col<0 || col>=10 || nuevoTab[row][col] !== colorTocado) return;
+                nuevoTab[row][col] = 0;
+                sink(row+1, col); sink(row-1, col); sink(row, col+1); sink(row, col-1);
+            }
+            sink(r, c);
+
+            db.update({
+                tablero: nuevoTab,
+                turno: (gameState.turno + 1) % keys.length,
+                [`players/${myId}/pos`]: {r, c}
+            });
+        }
+
+        function reiniciarPartida(soloTablero = false) {
+            let t = Array.from({length:10}, () => Array.from({length:10}, () => Math.floor(Math.random()*6)+1));
+            if (soloTablero) {
+                db.child('tablero').set(t);
+                db.child('turno').set(0);
+            } else {
+                // Reset total
+                db.set({ tablero: t, turno: 0, players: {} });
+                location.reload();
+            }
+        }
+    </script>
+</body>
+</html>
+
