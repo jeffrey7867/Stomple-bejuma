@@ -3,22 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>🌐 STOMPLE UNESR - COLOR FIX</title>
+    <title>🌐 STOMPLE PRO - DISTRIBUIDORA SEQUERA EDITION</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        :root { --bg: #0f172a; --accent: #38bdf8; --admin: #f59e0b; }
-        body { font-family: sans-serif; background: var(--bg); color: white; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        :root { --bg: #0f172a; --accent: #38bdf8; --admin: #f59e0b; --loss: #ef4444; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: white; margin: 0; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
         
-        /* Tablero Forzado */
-        #board { 
-            display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; 
-            width: 90vw; max-width: 360px; aspect-ratio: 1/1; 
-            margin: 10px auto; background: #1e293b; padding: 10px; border-radius: 12px; 
-        }
-        
-        /* Clases de Colores con Soporte Total */
-        .marble { width: 100%; height: 100%; border-radius: 50%; border: none; cursor: pointer; min-height: 25px; transition: transform 0.1s; }
+        /* Tablero y Canicas */
+        #board { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; width: 92vw; max-width: 380px; aspect-ratio: 1/1; margin: 10px auto; background: #1e293b; padding: 10px; border-radius: 12px; position: relative; }
+        .marble { width: 100%; height: 100%; border-radius: 50%; cursor: pointer; transition: 0.2s; position: relative; }
         .c1 { background: radial-gradient(circle, #ff4d4d, #990000) !important; }
         .c2 { background: radial-gradient(circle, #4da6ff, #0044cc) !important; }
         .c3 { background: radial-gradient(circle, #ffcc00, #b38f00) !important; }
@@ -27,58 +21,98 @@
         .c6 { background: radial-gradient(circle, #a6a6a6, #333333) !important; }
         .stomped { background: #0f172a !important; opacity: 0.2; transform: scale(0.6); pointer-events: none; }
 
+        /* Fichas de Jugador */
+        .p-token { position: absolute; width: 80%; height: 80%; top: 10%; left: 10%; border: 2px solid white; border-radius: 50%; font-size: 0.55rem; font-weight: bold; display: flex; align-items: center; justify-content: center; z-index: 10; box-shadow: 0 0 8px rgba(0,0,0,0.8); }
+        .my-token { border-color: var(--accent); box-shadow: 0 0 12px var(--accent); animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+
+        /* Emotes Flotantes */
+        .emote-pop { position: absolute; font-size: 3rem; animation: floatUp 2s forwards; pointer-events: none; z-index: 500; left: 50%; transform: translateX(-50%); top: 40%; }
+        @keyframes floatUp { 0% { opacity:0; transform:translate(-50%, 20px); } 20% { opacity:1; } 100% { opacity:0; transform:translate(-50%, -100px); } }
+
+        /* UI de Admin y Chat */
         .overlay { position: fixed; inset: 0; background: var(--bg); z-index: 2000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .btn-main { background: var(--accent); color: #000; border: none; padding: 15px 30px; border-radius: 10px; font-weight: bold; font-size: 1.1rem; }
-        
-        #admin-panel { display: none; background: #1e293b; border-top: 2px solid var(--admin); padding: 8px; position: fixed; bottom: 0; width: 100%; }
+        #admin-panel { display: none; background: #1e293b; border-top: 3px solid var(--admin); padding: 10px; position: fixed; bottom: 0; width: 100%; z-index: 1000; }
+        #chat-box { flex-grow: 1; overflow-y: auto; padding: 8px; font-size: 0.8rem; background: #1e293b; margin: 5px 10px; border-radius: 8px; max-height: 100px; border: 1px solid #334155; }
+        .react-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; padding: 5px; }
     </style>
 </head>
 <body>
 
     <div id="setup-screen" class="overlay">
-        <h2 style="margin-bottom: 30px;">🎨 ELIGE TU COLOR</h2>
-        <div id="color-options" style="display:grid; grid-template-columns: repeat(3, 1fr); gap:20px;"></div>
-        <button id="start-btn" class="btn-main" disabled onclick="unirse()" style="margin-top:40px;">ENTRAR A LA PARTIDA</button>
+        <h2 style="color: var(--accent);">STOMPLE ONLINE</h2>
+        <p>Elige tu color para entrar:</p>
+        <div id="color-options" style="display:grid; grid-template-columns: repeat(3, 1fr); gap:15px;"></div>
+        <button id="start-btn" class="btn-main" disabled onclick="unirse()" style="margin-top:30px; padding: 15px 40px; border-radius: 10px; background: var(--accent); font-weight: bold;">ENTRAR A LA PARTIDA</button>
     </div>
 
     <div id="game-ui" style="display:none; flex-direction: column; height: 100%;">
-        <div style="padding: 10px; display: flex; justify-content: space-between;">
-            <div id="scoreboard" style="font-weight: bold; font-size: 0.8rem;"></div>
-            <button onclick="location.reload()" style="background:red; color:white; border:none; padding:5px 10px; border-radius:5px;">SALIR</button>
+        <div style="padding: 10px; display: flex; justify-content: space-between; align-items: center;">
+            <div id="scoreboard" style="display: flex; gap: 8px;"></div>
+            <button onclick="salir()" style="background:var(--loss); border:none; color:white; padding:5px 12px; border-radius:5px; font-size: 0.7rem;">SALIR</button>
         </div>
-        <div id="board"></div>
-        <div id="msg" style="color: var(--accent); font-weight: bold; margin: 10px;"></div>
-        
+
+        <div id="board-container" style="position: relative;">
+            <div id="board"></div>
+            <div id="emote-layer"></div>
+        </div>
+
+        <div id="msg" style="margin: 5px; font-weight: bold; color: var(--accent);">Cargando...</div>
+
+        <div style="display:flex; justify-content: center; gap: 15px; margin-bottom: 5px;">
+            <button class="react-btn" onclick="sendEmote('😂')">😂</button>
+            <button class="react-btn" onclick="sendEmote('🔥')">🔥</button>
+            <button class="react-btn" onclick="sendEmote('😱')">😱</button>
+            <button class="react-btn" onclick="sendEmote('😎')">😎</button>
+        </div>
+
+        <div id="chat-box"></div>
+        <input type="text" id="chat-input" placeholder="Escribe un mensaje..." style="margin: 0 10px 10px; background: #334155; border: none; color: white; padding: 10px; border-radius: 5px;" onkeypress="if(event.key==='Enter') sendChat()">
+
         <div id="admin-panel">
-            <button class="btn-main" style="font-size: 0.8rem; height: 40px;" onclick="resetBoard()">REINICIAR TABLERO</button>
-            <div id="kick-list" style="margin-top: 8px; display: flex; gap: 5px; justify-content: center;"></div>
+            <span style="color: var(--admin); font-size: 0.6rem; font-weight: bold;">HOST TOOLS</span>
+            <div style="display: flex; gap: 10px; overflow-x: auto; padding: 5px;">
+                <button onclick="resetBoard()" style="background: var(--admin); border:none; padding: 5px 10px; border-radius: 4px; font-size: 0.7rem; font-weight: bold;">REINICIAR PARTIDA</button>
+                <div id="kick-tools" style="display: flex; gap: 5px;"></div>
+            </div>
         </div>
     </div>
 
     <script>
         const firebaseConfig = { databaseURL: "https://stomple-default-rtdb.firebaseio.com/" };
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-        const db = firebase.database().ref('stomple_bejuma_final_v2');
+        const db = firebase.database().ref('stomple_bejuma_final_v3');
 
         let myId = localStorage.getItem('stomple_id') || "U-" + Math.floor(Math.random() * 9999);
         localStorage.setItem('stomple_id', myId);
         
         let selectedColor = null;
-        let localState = null;
+        let gameState = { players: {}, tablero: null, turno: 0, host: "" };
 
-        // Escucha principal
         db.on('value', (snap) => {
-            localState = snap.val() || { players: {}, tablero: null, host: "" };
+            const data = snap.val();
+            if (!data) return renderSelector();
             
-            if (localState.players && localState.players[myId]) {
+            // Efecto de emote si hay uno nuevo
+            if (data.lastEmote && data.lastEmote !== gameState.lastEmote) {
+                showFloatingEmote(data.lastEmote.split('_')[0]);
+            }
+            gameState = data;
+
+            // Seguridad: Expulsión
+            if (gameState.players && !gameState.players[myId] && document.getElementById('game-ui').style.display === 'flex') {
+                alert("Fuiste sacado de la partida");
+                location.reload();
+            }
+
+            if (gameState.players && gameState.players[myId]) {
                 document.getElementById('setup-screen').style.display = 'none';
                 document.getElementById('game-ui').style.display = 'flex';
-                if (localState.host === myId) document.getElementById('admin-panel').style.display = 'block';
+                if (gameState.host === myId) document.getElementById('admin-panel').style.display = 'block';
                 renderGame();
-                renderKickList();
+                renderChat();
+                renderKickTools();
             } else {
-                document.getElementById('setup-screen').style.display = 'flex';
-                document.getElementById('game-ui').style.display = 'none';
                 renderSelector();
             }
         });
@@ -86,20 +120,18 @@
         function renderSelector() {
             const container = document.getElementById('color-options');
             container.innerHTML = '';
-            const takenColors = Object.values(localState.players).map(p => p.color);
-            
+            const taken = Object.values(gameState.players || {}).map(p => p.color);
             for (let i = 1; i <= 6; i++) {
+                const isTaken = taken.includes(i);
                 const opt = document.createElement('div');
-                const isTaken = takenColors.includes(i);
                 opt.className = `marble c${i} ${isTaken ? 'stomped' : ''}`;
                 opt.style.width = "60px"; opt.style.height = "60px";
-                
                 if (!isTaken) {
                     opt.onclick = () => {
                         selectedColor = i;
                         document.getElementById('start-btn').disabled = false;
-                        container.querySelectorAll('.marble').forEach(m => m.style.outline = "none");
-                        opt.style.outline = "4px solid white";
+                        container.querySelectorAll('.marble').forEach(m => m.style.boxShadow = "none");
+                        opt.style.boxShadow = "0 0 15px white";
                     };
                 }
                 container.appendChild(opt);
@@ -107,6 +139,113 @@
         }
 
         async function unirse() {
+            let updates = {};
+            if (!gameState.tablero) {
+                updates['tablero'] = Array.from({length:10}, () => Array.from({length:10}, () => Math.floor(Math.random()*6)+1));
+                updates['host'] = myId;
+                updates['turno'] = 0;
+            }
+            const pNum = Object.keys(gameState.players || {}).length + 1;
+            updates[`players/${myId}`] = { color: selectedColor, pos: {r:-1, c:-1}, pNum: pNum };
+            db.update(updates);
+        }
+
+        function renderGame() {
+            const boardEl = document.getElementById('board');
+            boardEl.innerHTML = '';
+            const keys = Object.keys(gameState.players);
+            
+            const scoreEl = document.getElementById('scoreboard');
+            scoreEl.innerHTML = keys.map((id, idx) => {
+                const p = gameState.players[id];
+                return `<div style="padding: 2px 8px; border-bottom: 2px solid ${gameState.turno === idx ? 'var(--accent)' : 'transparent'}">P${p.pNum}</div>`;
+            }).join('');
+
+            gameState.tablero.forEach((fila, r) => {
+                fila.forEach((color, c) => {
+                    const m = document.createElement('div');
+                    m.className = `marble c${color} ${color === 0 ? 'stomped' : ''}`;
+                    keys.forEach(id => {
+                        const p = gameState.players[id];
+                        if (p.pos.r === r && p.pos.c === c) {
+                            const t = document.createElement('div');
+                            t.className = `p-token c${p.color} ${id === myId ? 'my-token' : ''}`;
+                            t.innerText = id === myId ? 'YO' : 'P' + p.pNum;
+                            m.appendChild(t);
+                        }
+                    });
+                    m.onclick = () => mover(r, c, keys);
+                    boardEl.appendChild(m);
+                });
+            });
+            document.getElementById('msg').innerText = (keys[gameState.turno] === myId) ? "⭐ TU TURNO ⭐" : "Esperando movimiento...";
+        }
+
+        function mover(r, c, keys) {
+            if (keys[gameState.turno] !== myId) return;
+            const p = gameState.players[myId];
+            const esAdy = Math.abs(p.pos.r - r) <= 1 && Math.abs(p.pos.c - c) <= 1;
+
+            if (p.pos.r === -1) { if (r!==0 && r!==9 && c!==0 && c!==9) return; }
+            else if (!esAdy && gameState.tablero[r][c] !== p.color) return;
+
+            let nt = JSON.parse(JSON.stringify(gameState.tablero));
+            const target = nt[r][c];
+            const hundir = (row, col) => {
+                if (row<0||row>=10||col<0||col>=10||nt[row][col]!==target||nt[row][col]===0) return;
+                nt[row][col] = 0;
+                hundir(row+1,col); hundir(row-1,col); hundir(row,col+1); hundir(row,col-1);
+            };
+            hundir(r, c);
+            db.update({ tablero: nt, turno: (gameState.turno + 1) % keys.length, [`players/${myId}/pos`]: {r, c} });
+        }
+
+        function renderKickTools() {
+            const container = document.getElementById('kick-tools');
+            container.innerHTML = '';
+            Object.keys(gameState.players).forEach(id => {
+                if (id !== myId) {
+                    const b = document.createElement('button');
+                    b.innerText = `Sacar P${gameState.players[id].pNum}`;
+                    b.style = "background:red; color:white; border:none; padding:4px 8px; border-radius:4px; font-size:0.6rem;";
+                    b.onclick = () => db.child('players/'+id).remove();
+                    container.appendChild(b);
+                }
+            });
+        }
+
+        function resetBoard() {
+            const t = Array.from({length:10}, () => Array.from({length:10}, () => Math.floor(Math.random()*6)+1));
+            db.update({ tablero: t, turno: 0 });
+        }
+
+        function sendEmote(e) { db.child('lastEmote').set(e + "_" + Math.random()); }
+        function showFloatingEmote(e) {
+            const el = document.createElement('div'); el.className = 'emote-pop'; el.innerText = e;
+            document.getElementById('emote-layer').appendChild(el);
+            setTimeout(() => el.remove(), 2000);
+        }
+
+        function sendChat() {
+            const i = document.getElementById('chat-input');
+            if (!i.value) return;
+            const c = gameState.chat || [];
+            c.push(`P${gameState.players[myId].pNum}: ${i.value}`);
+            if (c.length > 8) c.shift();
+            db.child('chat').set(c);
+            i.value = '';
+        }
+
+        function renderChat() {
+            const b = document.getElementById('chat-box');
+            b.innerHTML = (gameState.chat || []).map(m => `<div>${m}</div>`).join('');
+            b.scrollTop = b.scrollHeight;
+        }
+
+        function salir() { db.child('players/'+myId).remove().then(() => location.reload()); }
+    </script>
+</body>
+</html>
             let updates = {};
             if (!localState.tablero) {
                 const nuevoTab = Array.from({length:10}, () => Array.from({length:10}, () => Math.floor(Math.random()*6)+1));
