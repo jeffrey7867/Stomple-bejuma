@@ -3,53 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Stomple UNESR Pro</title>
+    <title>Stomple Pro UNESR</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <div id="setup-screen" class="full-screen">
-        <h2 class="text-accent">STOMPLE UNESR</h2>
-        <div id="color-opts" class="grid-colors"></div>
-        <div class="menu-btns">
-            <button id="join-btn" disabled onclick="unirse()" class="btn btn-accent">ENTRAR</button>
-            <button onclick="toggleReglas()" class="btn btn-help">REGLAS</button>
-        </div>
+    <div id="setup-screen" class="screen">
+        <h1 class="logo">STOMPLE<span>UNESR</span></h1>
+        <div id="color-opts" class="color-grid"></div>
+        <button id="join-btn" disabled onclick="unirse()" class="btn-main">JUGAR AHORA</button>
+        <button onclick="toggleReglas()" class="btn-link">Ver Reglas</button>
     </div>
 
-    <div id="game-ui" style="display:none;">
-        <div id="top-bar">
-            <span>Color: <span id="my-dot" class="dot"></span></span>
-            <div id="status-msg"></div>
-            <button onclick="salir()" class="btn-salir">SALIR</button>
-        </div>
+    <div id="game-ui" class="screen" style="display:none;">
+        <header class="app-header">
+            <div class="user-info">
+                <span id="my-dot" class="mini-dot"></span>
+                <span id="status-msg">Cargando...</span>
+            </div>
+            <button onclick="salir()" class="btn-exit">SALIR</button>
+        </header>
 
-        <div id="board"></div>
+        <main class="game-content">
+            <div id="board"></div>
+        </main>
 
-        <div class="interaction-area">
-            <div class="emotes">
+        <footer class="app-footer">
+            <div class="chat-display" id="chat-box">¡Bienvenidos a Stomple!</div>
+            <div class="emotes-bar">
                 <button onclick="enviarAccion('😂')">😂</button>
                 <button onclick="enviarAccion('🔥')">🔥</button>
                 <button onclick="enviarAccion('😱')">😱</button>
-                <button onclick="enviarAccion('😎')">😎</button>
+                <button onclick="enviarAccion('🤫')">🤫</button>
             </div>
-            <div id="chat-box">Esperando jugada...</div>
-        </div>
-
-        <div id="admin-panel" style="display:none">
-            <div class="admin-label">HOST: GESTIÓN</div>
-            <div id="kick-list" class="flex-scroll"></div>
-            <button onclick="reiniciarTodo()" class="btn-reiniciar">NUEVA PARTIDA</button>
-        </div>
+            
+            <div id="admin-panel" class="admin-shelf" style="display:none">
+                <div id="kick-list"></div>
+                <button onclick="reiniciarTodo()" class="btn-reset">REINICIAR TABLERO</button>
+            </div>
+        </footer>
     </div>
 
-    <div id="rules-modal" class="modal" style="display:none">
-        <div class="modal-content">
-            <h3>Cómo jugar</h3>
-            <p>1. Entra por los bordes.<br>2. Mueve a adyacentes o salta a tu color.<br>3. Hunde grupos del mismo color.</p>
-            <button onclick="toggleReglas()" class="btn btn-accent">LISTO</button>
+    <div id="rules-modal" class="overlay" style="display:none" onclick="toggleReglas()">
+        <div class="modal">
+            <h3>Reglas Rápidas</h3>
+            <p>• Entra por los bordes.<br>• Salta a tu color o mueve a un lado.<br>• Hunde grupos del mismo color.</p>
+            <button class="btn-main">ENTENDIDO</button>
         </div>
     </div>
 
