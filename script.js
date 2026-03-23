@@ -1,47 +1,46 @@
-const config = { databaseURL: "https://stomple-default-rtdb.firebaseio.com/" };
-if (!firebase.apps.length) firebase.initializeApp(config);
-const db = firebase.database().ref('stomple_unesr_v13');
+const fbConfig = { databaseURL: "https://stomple-default-rtdb.firebaseio.com/" };
+if (!firebase.apps.length) firebase.initializeApp(fbConfig);
+const db = firebase.database().ref('stomple_final_v1');
 
-let myId = localStorage.getItem('stomple_id') || "U-" + Math.floor(Math.random() * 9999);
-localStorage.setItem('stomple_id', myId);
-let myColor = null;
-let gameData = {};
+let myId = localStorage.getItem('stomple_user') || "U" + Math.floor(Math.random()*1000);
+localStorage.setItem('stomple_user', myId);
+let myCol = null;
+let state = {};
 
 db.on('value', (snap) => {
-    gameData = snap.val() || { players: {}, board: null, turn: 0, host: "" };
-    render();
+    state = snap.val() || { players: {}, board: null, turn: 0, host: "" };
+    renderApp();
 });
 
-function render() {
-    const players = gameData.players || {};
-    const keys = Object.keys(players);
+function renderApp() {
+    const p = state.players || {};
+    const keys = Object.keys(p);
 
-    if (players[myId]) {
+    if (p[myId]) {
         document.getElementById('setup-screen').style.display = 'none';
         document.getElementById('game-ui').style.display = 'flex';
         
-        // Mostrar Host Tools
-        const isHost = gameData.host === myId;
+        // Lógica de Host
+        const isHost = state.host === myId;
         document.getElementById('admin-panel').style.display = isHost ? 'block' : 'none';
         
-        if (isHost) renderKickTools(keys);
-        renderBoard(keys);
-        if (gameData.msg) document.getElementById('chat-box').innerText = gameData.msg;
+        drawBoard(keys);
+        if (state.lastMsg) document.getElementById('chat-box').innerText = state.lastMsg;
     } else {
-        renderSelector();
+        drawPicker();
     }
 }
 
-function renderSelector() {
+function drawPicker() {
     const container = document.getElementById('color-opts');
     container.innerHTML = '';
-    const taken = Object.values(gameData.players || {}).map(p => p.color);
+    const taken = Object.values(state.players || {}).map(pl => pl.color);
     for (let i = 1; i <= 6; i++) {
         const div = document.createElement('div');
         div.className = `marble c${i} ${taken.includes(i) ? 'stomped' : ''}`;
-        div.style.height = '60px';
+        div.style.height = '50px';
         if (!taken.includes(i)) div.onclick = () => {
-            myColor = i;
+            myCol = i;
             document.getElementById('join-btn').disabled = false;
             container.querySelectorAll('.marble').forEach(m => m.style.boxShadow = 'none');
             div.style.boxShadow = '0 0 15px #38bdf8';
@@ -52,68 +51,46 @@ function renderSelector() {
 
 function unirse() {
     let up = {};
-    if (!gameData.host) {
+    if (!state.host) {
         up.host = myId;
-        up.turn = 0;
         up.board = Array.from({length:10}, () => Array.from({length:10}, () => Math.floor(Math.random()*6)+1));
     }
-    up[`players/${myId}`] = { color: myColor, r: -1, c: -1, pNum: Object.keys(gameData.players || {}).length + 1 };
+    up[`players/${myId}`] = { color: myCol, r: -1, c: -1, pName: 'P'+(Object.keys(state.players||{}).length+1) };
     db.update(up);
 }
 
-function renderBoard(keys) {
-    const b = document.getElementById('board');
-    b.innerHTML = '';
-    if (!gameData.board) return;
-
-    gameData.board.forEach((row, r) => {
+function drawBoard(keys) {
+    const b = document.getElementById('board'); b.innerHTML = '';
+    if (!state.board) return;
+    state.board.forEach((row, r) => {
         row.forEach((col, c) => {
             const m = document.createElement('div');
             m.className = `marble c${col} ${col === 0 ? 'stomped' : ''}`;
             keys.forEach(id => {
-                const p = gameData.players[id];
-                if (p.r === r && p.c === c) {
+                if (state.players[id].r === r && state.players[id].c === c) {
                     const t = document.createElement('div');
-                    t.className = 'p-token';
-                    t.innerText = id === myId ? 'YO' : 'P' + p.pNum;
+                    t.innerText = id === myId ? 'YO' : state.players[id].pName;
+                    t.style = "font-size:8px; border:1px solid white; border-radius:50%; width:80%; height:80%; margin:10%; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.5)";
                     m.appendChild(t);
                 }
             });
-            m.onclick = () => mover(r, c, keys);
+            m.onclick = () => { if(keys[state.turn] === myId) handleMove(r, c, keys); };
             b.appendChild(m);
         });
     });
-    const turnId = keys[gameData.turn];
-    document.getElementById('status-msg').innerText = (turnId === myId) ? "⭐ TU TURNO" : "Turno de P" + gameData.players[turnId]?.pNum;
+    document.getElementById('status-msg').innerText = (keys[state.turn] === myId) ? "TU TURNO ⭐" : "Turno de " + state.players[keys[state.turn]]?.pName;
 }
 
-function mover(r, c, keys) {
-    if (keys[gameData.turn] !== myId) return;
-    let nb = JSON.parse(JSON.stringify(gameData.board));
+function handleMove(r, c, keys) {
+    let nb = JSON.parse(JSON.stringify(state.board));
     if (nb[r][c] === 0) return;
-    nb[r][c] = 0; // Lógica de hundir simple
-    db.update({ board: nb, [`players/${myId}/r`]: r, [`players/${myId}/c`]: c, turn: (gameData.turn + 1) % keys.length });
+    nb[r][c] = 0; // Aquí puedes poner la lógica de hundir grupos luego
+    db.update({ board: nb, [`players/${myId}/r`]: r, [`players/${myId}/c`]: c, turn: (state.turn + 1) % keys.length });
 }
 
-function renderKickTools(keys) {
-    const list = document.getElementById('kick-list');
-    list.innerHTML = '';
-    keys.forEach(id => {
-        if (id !== myId) {
-            const btn = document.createElement('button');
-            btn.innerText = 'Expulsar P' + gameData.players[id].pNum;
-            btn.onclick = () => db.child('players/' + id).remove();
-            list.appendChild(btn);
-        }
-    });
-}
-
+function enviarAccion(e) { db.child('lastMsg').set(`Dice: ${e}`); }
+function salir() { db.child('players/'+myId).remove().then(() => location.reload()); }
 function reiniciarTodo() {
     const nb = Array.from({length:10}, () => Array.from({length:10}, () => Math.floor(Math.random()*6)+1));
-    let up = { board: nb, turn: 0, msg: "¡Partida Reiniciada!" };
-    Object.keys(gameData.players).forEach(id => { up[`players/${id}/r`] = -1; up[`players/${id}/c`] = -1; });
-    db.update(up);
+    db.update({ board: nb, turn: 0, lastMsg: "¡Partida Reiniciada!" });
 }
-
-function sendEmoji(e) { db.child('msg').set(`P${gameData.players[myId].pNum} dice: ${e}`); }
-function salir() { db.child('players/' + myId).remove().then(() => location.reload()); }
