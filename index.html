@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Stomple Pro - Final Edition</title>
+    <title>Stomple UNESR Pro</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <link rel="stylesheet" href="style.css">
@@ -15,56 +15,44 @@
         <div id="color-opts" class="grid-colors"></div>
         <div class="menu-btns">
             <button id="join-btn" disabled onclick="unirse()" class="btn btn-accent">ENTRAR</button>
-            <button onclick="toggleReglas()" class="btn btn-help">¿CÓMO JUGAR?</button>
+            <button onclick="toggleReglas()" class="btn btn-help">REGLAS</button>
+        </div>
+    </div>
+
+    <div id="game-ui" style="display:none;">
+        <div id="top-bar">
+            <span>Color: <span id="my-dot" class="dot"></span></span>
+            <div id="status-msg"></div>
+            <button onclick="salir()" class="btn-salir">SALIR</button>
+        </div>
+
+        <div id="board"></div>
+
+        <div class="interaction-area">
+            <div class="emotes">
+                <button onclick="enviarAccion('😂')">😂</button>
+                <button onclick="enviarAccion('🔥')">🔥</button>
+                <button onclick="enviarAccion('😱')">😱</button>
+                <button onclick="enviarAccion('😎')">😎</button>
+            </div>
+            <div id="chat-box">Esperando jugada...</div>
+        </div>
+
+        <div id="admin-panel" style="display:none">
+            <div class="admin-label">HOST: GESTIÓN</div>
+            <div id="kick-list" class="flex-scroll"></div>
+            <button onclick="reiniciarTodo()" class="btn-reiniciar">NUEVA PARTIDA</button>
         </div>
     </div>
 
     <div id="rules-modal" class="modal" style="display:none">
         <div class="modal-content">
-            <h3>Reglas del Juego</h3>
-            <ul>
-                <li>Entra por cualquier orilla (filas/columnas 0 o 9).</li>
-                <li>Mueve a una canica adyacente o salta a una de tu mismo color.</li>
-                <li>Al pisar, hundes todas las canicas conectadas de ese color.</li>
-                <li>Si no tienes movimientos válidos, quedas fuera.</li>
-            </ul>
-            <button onclick="toggleReglas()" class="btn btn-accent">ENTENDIDO</button>
-        </div>
-    </div>
-
-    <div id="win-screen" class="full-screen" style="display:none">
-        <h1 class="icon-win">🏆</h1>
-        <h2 id="winner-text"></h2>
-        <button onclick="reiniciarTodo()" id="host-reset-btn" class="btn btn-win" style="display:none">NUEVA PARTIDA</button>
-    </div>
-
-    <div id="game-ui" style="display:none;">
-        <div id="top-bar">
-            <span>Tú: <span id="my-dot" class="dot"></span></span>
-            <button onclick="salir()" class="btn btn-loss btn-small">SALIR</button>
-        </div>
-
-        <div id="board"></div>
-        
-        <div id="status-msg"></div>
-
-        <div class="interaction-zone">
-            <div class="emotes">
-                <button onclick="enviarAccion('😂')">😂</button>
-                <button onclick="enviarAccion('🔥')">🔥</button>
-                <button onclick="enviarAccion('😱')">😱</button>
-                <button onclick="enviarAccion('🤫')">🤫</button>
-            </div>
-            <div id="chat-box"></div>
-        </div>
-
-        <div id="admin-panel" style="display:none">
-            <div class="admin-label">CONTROL DE HOST (EXPULSAR)</div>
-            <div id="kick-list" class="flex-scroll"></div>
+            <h3>Cómo jugar</h3>
+            <p>1. Entra por los bordes.<br>2. Mueve a adyacentes o salta a tu color.<br>3. Hunde grupos del mismo color.</p>
+            <button onclick="toggleReglas()" class="btn btn-accent">LISTO</button>
         </div>
     </div>
 
     <script src="script.js"></script>
 </body>
 </html>
-
