@@ -3,110 +3,225 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>🌐 STOMPLE UNESR - ADMIN PANEL</title>
+    <title>🌐 STOMPLE UNESR - FIXED</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
         :root { --bg: #0f172a; --accent: #38bdf8; --win: #22c55e; --loss: #ef4444; --chat-bg: #1e293b; --admin: #f59e0b; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: white; text-align: center; margin: 0; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
         
-        /* UI General */
+        /* Capas */
         .overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.98); z-index: 2000; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
         .btn-main { background: var(--accent); color: #000; border: none; padding: 12px 25px; border-radius: 8px; font-weight: bold; cursor: pointer; }
 
-        /* Tablero y Fichas */
-        #board { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; width: 92vw; max-width: 380px; aspect-ratio: 1/1; margin: 0 auto; background: #334155; padding: 8px; border-radius: 10px; position: relative; }
-        .marble { width: 100%; height: 100%; border-radius: 50%; cursor: pointer; position: relative; transition: 0.2s; }
+        /* Tablero */
+        #board { display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; width: 92vw; max-width: 380px; aspect-ratio: 1/1; margin: 0 auto; background: #334155; padding: 8px; border-radius: 10px; }
+        .marble { width: 100%; height: 100%; border-radius: 50%; cursor: pointer; position: relative; transition: 0.2s; min-height: 30px; }
         .stomped { opacity: 0.1; transform: scale(0.7); pointer-events: none; }
+        
+        /* Colores */
+        .c1 { background: radial-gradient(circle, #ff4444, #880000); } .c2 { background: radial-gradient(circle, #44aaff, #004488); }
+        .c3 { background: radial-gradient(circle, #ffbb00, #886600); } .c4 { background: radial-gradient(circle, #cc44ff, #6b21a8); }
+        .c5 { background: radial-gradient(circle, #4ade80, #166534); } .c6 { background: radial-gradient(circle, #555555, #000000); }
+        
+        /* Fichas */
         .p-token { position: absolute; width: 85%; height: 85%; top: 7.5%; left: 7.5%; border: 2px solid white; border-radius: 50%; font-weight: bold; font-size: 0.55rem; display: flex; align-items: center; justify-content: center; z-index: 100; box-shadow: 0 0 5px black; }
         .my-token { border-color: var(--accent); box-shadow: 0 0 10px var(--accent); animation: pulse 1.5s infinite; }
         @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
 
-        /* PANEL DE ADMINISTRACIÓN */
-        #admin-panel { display: none; background: #1e293b; border-top: 2px solid var(--admin); padding: 10px; position: fixed; bottom: 0; width: 100%; z-index: 1000; box-shadow: 0 -5px 15px rgba(0,0,0,0.5); }
-        .admin-title { font-size: 0.7rem; color: var(--admin); font-weight: bold; text-transform: uppercase; margin-bottom: 8px; display: block; }
-        .admin-tools { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 5px; justify-content: center; }
-        .btn-admin { background: #334155; color: white; border: 1px solid var(--admin); padding: 5px 10px; border-radius: 4px; font-size: 0.65rem; cursor: pointer; white-space: nowrap; }
-        .btn-kick { background: var(--loss); border: none; }
+        /* Admin Panel */
+        #admin-panel { display: none; background: #1e293b; border-top: 2px solid var(--admin); padding: 10px; position: fixed; bottom: 0; width: 100%; z-index: 1000; }
+        .admin-tools { display: flex; gap: 8px; overflow-x: auto; padding: 5px; justify-content: center; }
+        .btn-kick { background: var(--loss); color: white; border: none; padding: 5px; border-radius: 4px; font-size: 0.6rem; }
 
-        /* Chat y Emotes */
-        #chat-section { flex-grow: 1; background: var(--chat-bg); margin: 5px 10px; border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; max-height: 120px; border: 1px solid #334155; margin-bottom: 80px; /* Espacio para el panel admin */ }
+        /* Chat */
+        #chat-section { flex-grow: 1; background: var(--chat-bg); margin: 5px 10px 80px 10px; border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; border: 1px solid #334155; }
         #chat-box { flex-grow: 1; overflow-y: auto; padding: 8px; text-align: left; font-size: 0.75rem; }
-        #reaction-bar { display: flex; justify-content: center; gap: 8px; margin: 5px 0; }
-        .emote-pop { position: absolute; font-size: 3rem; animation: floatUp 2s forwards; pointer-events: none; z-index: 500; left: 50%; top: 40%; transform: translateX(-50%); }
-        @keyframes floatUp { 0% { opacity:0; transform:translate(-50%, 20px); } 20% { opacity:1; } 100% { opacity:0; transform:translate(-50%, -100px); } }
     </style>
 </head>
 <body>
 
     <div id="setup-screen" class="overlay" style="display: flex;">
-        <h2>🎨 STOMPLE ONLINE</h2>
+        <h2>🎨 ELIGE TU COLOR</h2>
         <div id="color-options" style="display:grid; grid-template-columns: repeat(3, 1fr); gap:15px; margin:20px;"></div>
-        <button id="start-btn" class="btn-main" disabled onclick="unirse()">COMENZAR</button>
+        <button id="start-btn" class="btn-main" disabled onclick="unirse()">ENTRAR A LA PARTIDA</button>
     </div>
 
     <div id="game-ui" style="display:none; flex-direction: column; height: 100%;">
-        <div style="display:flex; justify-content: space-between; padding: 8px; align-items: center;">
+        <div style="display:flex; justify-content: space-between; padding: 10px;">
             <div id="scoreboard" style="display:flex; gap:5px;"></div>
-            <button onclick="salir()" style="background:var(--loss); border:none; color:white; padding:4px 10px; border-radius:4px; font-size:0.7rem;">SALIR</button>
+            <button onclick="salir()" style="background:var(--loss); border:none; color:white; padding:5px 10px; border-radius:5px;">SALIR</button>
         </div>
 
-        <div id="board-container" style="position:relative;">
-            <div id="board"></div>
-            <div id="emote-layer"></div>
-        </div>
-
-        <div id="msg" style="margin: 5px; font-weight: bold; color: var(--accent); font-size: 0.85rem;">Sincronizando...</div>
-
-        <div id="reaction-bar">
-            <button style="background:none; border:none; font-size:1.2rem;" onclick="sendEmote('😂')">😂</button>
-            <button style="background:none; border:none; font-size:1.2rem;" onclick="sendEmote('🔥')">🔥</button>
-            <button style="background:none; border:none; font-size:1.2rem;" onclick="sendEmote('😱')">😱</button>
-            <button style="background:none; border:none; font-size:1.2rem;" onclick="sendEmote('😎')">😎</button>
-        </div>
+        <div id="board"></div>
+        <div id="msg" style="margin: 10px; font-weight: bold; color: var(--accent);">Sincronizando...</div>
 
         <div id="chat-section">
             <div id="chat-box"></div>
-            <div id="chat-input-area" style="display:flex; padding:4px; background:#0f172a;">
-                <input type="text" id="chat-input" placeholder="Chat..." style="flex-grow:1; background:#334155; border:none; color:white; padding:6px; border-radius:5px;" onkeypress="if(event.key==='Enter') sendChat()">
+            <div style="display:flex; padding:5px; background:#0f172a;">
+                <input type="text" id="chat-input" placeholder="Chat..." style="flex-grow:1; background:#334155; border:none; color:white; padding:8px; border-radius:5px;" onkeypress="if(event.key==='Enter') sendChat()">
             </div>
         </div>
 
         <div id="admin-panel">
-            <span class="admin-title">🛠️ Panel de Control del Host</span>
             <div class="admin-tools">
-                <button class="btn-admin" onclick="resetBoard()">🔄 Reiniciar Tablero</button>
-                <button class="btn-admin" onclick="clearRoom()">🧹 Limpiar Sala</button>
-                <div id="player-list-admin" style="display:flex; gap:5px;"></div>
+                <button class="btn-main" style="font-size:0.7rem; background:var(--admin)" onclick="resetBoard()">REINICIAR JUEGO</button>
+                <div id="kick-list" style="display:flex; gap:5px;"></div>
             </div>
         </div>
     </div>
 
     <script>
+        // CONFIGURACIÓN
         const firebaseConfig = { databaseURL: "https://stomple-default-rtdb.firebaseio.com/" };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database().ref('stomple_unesr_admin_v1');
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const db = firebase.database().ref('stomple_v_final_fix');
 
         let myId = localStorage.getItem('stomple_id') || "U-" + Math.floor(Math.random() * 9999);
         localStorage.setItem('stomple_id', myId);
         
-        let gameState = { players: {}, tablero: null, turno: 0, host: null };
+        let selectedColor = null;
+        let gameState = { players: {}, tablero: null, turno: 0, host: "" };
 
+        // ESCUCHA DE DATOS
         db.on('value', (snap) => {
             const data = snap.val();
-            if (data) {
-                if (data.lastEmote && data.lastEmote !== gameState.lastEmote) showFloatingEmote(data.lastEmote.split('_')[0]);
-                gameState = data;
-                
-                // Si el jugador actual es el host, mostramos el panel admin
-                if (gameState.host === myId) {
-                    document.getElementById('admin-panel').style.display = 'block';
-                }
+            if (!data) return renderSelector();
+            
+            gameState = data;
+            
+            // Check si fuimos expulsados
+            if (gameState.players && !gameState.players[myId] && document.getElementById('game-ui').style.display === 'flex') {
+                alert("Fuiste sacado de la partida");
+                location.reload();
+            }
 
-                // Si hemos sido expulsados
-                if (gameState.players && !gameState.players[myId] && document.getElementById('game-ui').style.display === 'flex') {
-                    alert("Has sido expulsado de la sala.");
-                    location.reload();
+            if (gameState.players && gameState.players[myId]) {
+                document.getElementById('setup-screen').style.display = 'none';
+                document.getElementById('game-ui').style.display = 'flex';
+                if (gameState.host === myId) document.getElementById('admin-panel').style.display = 'block';
+                renderGame();
+                renderChat();
+                renderKickList();
+            } else {
+                renderSelector();
+            }
+        });
+
+        function renderSelector() {
+            const container = document.getElementById('color-options');
+            if (!container) return;
+            container.innerHTML = '';
+            const taken = Object.values(gameState.players || {}).map(p => p.color);
+            for (let i = 1; i <= 6; i++) {
+                const isTaken = taken.includes(i);
+                const opt = document.createElement('div');
+                opt.className = `marble c${i} ${isTaken ? 'stomped' : ''}`;
+                opt.style.width = "50px"; opt.style.height = "50px";
+                if (!isTaken) opt.onclick = () => {
+                    selectedColor = i;
+                    document.getElementById('start-btn').disabled = false;
+                    container.querySelectorAll('div').forEach(d => d.style.border = "none");
+                    opt.style.border = "3px solid white";
+                };
+                container.appendChild(opt);
+            }
+        }
+
+        async function unirse() {
+            let updates = {};
+            if (!gameState.tablero) {
+                updates['tablero'] = Array.from({length:10}, () => Array.from({length:10}, () => Math.floor(Math.random()*6)+1));
+                updates['host'] = myId;
+            }
+            const pNum = Object.keys(gameState.players || {}).length + 1;
+            updates[`players/${myId}`] = { color: selectedColor, pos: {r:-1, c:-1}, pNum: pNum };
+            db.update(updates);
+        }
+
+        function renderGame() {
+            const boardEl = document.getElementById('board');
+            boardEl.innerHTML = '';
+            const keys = Object.keys(gameState.players);
+
+            gameState.tablero.forEach((fila, r) => {
+                fila.forEach((color, c) => {
+                    const m = document.createElement('div');
+                    m.className = `marble c${color} ${color === 0 ? 'stomped' : ''}`;
+                    keys.forEach(id => {
+                        const p = gameState.players[id];
+                        if (p.pos.r === r && p.pos.c === c) {
+                            const t = document.createElement('div');
+                            t.className = `p-token c${p.color} ${id === myId ? 'my-token' : ''}`;
+                            t.innerText = id === myId ? 'YO' : `P${p.pNum}`;
+                            m.appendChild(t);
+                        }
+                    });
+                    m.onclick = () => mover(r, c, keys);
+                    boardEl.appendChild(m);
+                });
+            });
+            document.getElementById('msg').innerText = (keys[gameState.turno] === myId) ? "⭐ TU TURNO ⭐" : "Esperando...";
+        }
+
+        function mover(r, c, keys) {
+            if (keys[gameState.turno] !== myId) return;
+            const p = gameState.players[myId];
+            const esAdy = Math.abs(p.pos.r - r) <= 1 && Math.abs(p.pos.c - c) <= 1;
+
+            if (p.pos.r === -1) { if (r!==0 && r!==9 && c!==0 && c!==9) return; }
+            else if (!esAdy && gameState.tablero[r][c] !== p.color) return;
+
+            let nt = JSON.parse(JSON.stringify(gameState.tablero));
+            const target = nt[r][c];
+            const hundir = (row, col) => {
+                if (row<0||row>=10||col<0||col>=10||nt[row][col]!==target||nt[row][col]===0) return;
+                nt[row][col] = 0;
+                hundir(row+1,col); hundir(row-1,col); hundir(row,col+1); hundir(row,col-1);
+            };
+            hundir(r, c);
+            db.update({ tablero: nt, turno: (gameState.turno + 1) % keys.length, [`players/${myId}/pos`]: {r, c} });
+        }
+
+        function renderKickList() {
+            const list = document.getElementById('kick-list');
+            list.innerHTML = '';
+            Object.keys(gameState.players).forEach(id => {
+                if (id !== myId) {
+                    const b = document.createElement('button');
+                    b.className = 'btn-kick';
+                    b.innerText = `Sacar P${gameState.players[id].pNum}`;
+                    b.onclick = () => db.child('players/'+id).remove();
+                    list.appendChild(b);
+                }
+            });
+        }
+
+        function resetBoard() {
+            const t = Array.from({length:10}, () => Array.from({length:10}, () => Math.floor(Math.random()*6)+1));
+            db.update({ tablero: t, turno: 0 });
+        }
+
+        function sendChat() {
+            const i = document.getElementById('chat-input');
+            if (!i.value) return;
+            const c = gameState.chat || [];
+            c.push(`P${gameState.players[myId].pNum}: ${i.value}`);
+            if (c.length > 10) c.shift();
+            db.child('chat').set(c);
+            i.value = '';
+        }
+
+        function renderChat() {
+            const b = document.getElementById('chat-box');
+            b.innerHTML = (gameState.chat || []).map(m => `<div>${m}</div>`).join('');
+            b.scrollTop = b.scrollHeight;
+        }
+
+        function salir() { db.child('players/'+myId).remove().then(() => location.reload()); }
+    </script>
+</body>
+</html>
                 }
             }
             if (gameState.players && gameState.players[myId]) {
