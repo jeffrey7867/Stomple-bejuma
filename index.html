@@ -23,13 +23,14 @@
         .c6 { background: radial-gradient(circle, #a6a6a6, #333333) !important; }
         .stomped { background: #0f172a !important; opacity: 0.1; transform: scale(0.6); pointer-events: none; }
 
-        .p-token { position: absolute; width: 80%; height: 80%; top: 10%; left: 10%; border: 2px solid white; border-radius: 50%; font-size: 0.6rem; display: flex; align-items: center; justify-content: center; font-weight: bold; box-shadow: 0 0 5px #000; }
+        .p-token { position: absolute; width: 80%; height: 80%; top: 10%; left: 10%; border: 2px solid white; border-radius: 50%; font-size: 0.6rem; display: flex; align-items: center; justify-content: center; font-weight: bold; box-shadow: 0 0 5px #000; z-index: 10; }
         .my-token { border-color: var(--accent); box-shadow: 0 0 10px var(--accent); }
 
         .full-screen { position: fixed; inset: 0; background: var(--bg); z-index: 3000; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
-        .btn { padding: 12px 25px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; }
+        .btn { padding: 12px 25px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; color: white; }
 
-        #admin-panel { display: none; background: #1e293b; border-top: 2px solid var(--admin); padding: 10px; position: fixed; bottom: 0; width: 100%; }
+        #admin-panel { display: none; background: #1e293b; border-top: 2px solid var(--admin); padding: 10px; position: fixed; bottom: 0; width: 100%; box-sizing: border-box; }
+        .admin-btns { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
     </style>
 </head>
 <body>
@@ -43,26 +44,30 @@
     <div id="win-screen" class="full-screen" style="display:none">
         <h1 style="font-size: 4rem;">🏆</h1>
         <h2 id="winner-text"></h2>
-        <button onclick="reiniciarTodo()" id="host-reset-btn" class="btn" style="display:none; background:var(--win)">NUEVA PARTIDA</button>
+        <button onclick="reiniciarTodo()" id="host-reset-win" class="btn" style="display:none; background:var(--win)">NUEVA PARTIDA</button>
     </div>
 
     <div id="game-ui" style="display:none; flex-direction: column; height: 100%;">
         <div id="top-bar">
             <span>Color: <span id="my-dot" class="dot"></span></span>
-            <button onclick="salir()" class="btn" style="background:var(--loss); padding: 5px 10px; font-size: 0.7rem; color: white;">SALIR</button>
+            <button onclick="salir()" class="btn" style="background:var(--loss); padding: 5px 10px; font-size: 0.7rem;">SALIR</button>
         </div>
         <div id="board"></div>
         <div id="status-msg" style="text-align:center; font-weight:bold; color:var(--accent); margin: 5px;"></div>
+        
         <div id="admin-panel">
-            <div style="color:var(--admin); font-size:0.6rem; font-weight:bold; margin-bottom:5px;">HOST: EXPULSAR JUGADORES</div>
-            <div id="kick-list" style="display:flex; gap:5px; overflow-x:auto;"></div>
+            <div style="color:var(--admin); font-size:0.6rem; font-weight:bold; margin-bottom:5px;">CONTROL DE HOST</div>
+            <div class="admin-btns">
+                <div id="kick-list" style="display:flex; gap:5px; overflow-x:auto; flex: 1;"></div>
+                <button onclick="reiniciarTodo()" class="btn" style="background:var(--admin); padding: 8px; font-size: 0.7rem;">REINICIAR TABLERO</button>
+            </div>
         </div>
     </div>
 
     <script>
         const config = { databaseURL: "https://stomple-default-rtdb.firebaseio.com/" };
         if (!firebase.apps.length) firebase.initializeApp(config);
-        const ref = firebase.database().ref('stomple_unesr_v8');
+        const ref = firebase.database().ref('stomple_unesr_v9'); // Nueva versión para limpiar datos viejos
 
         let myId = localStorage.getItem('stomple_id') || "U-" + Math.floor(Math.random() * 9999);
         localStorage.setItem('stomple_id', myId);
@@ -79,17 +84,14 @@
                 document.getElementById('game-ui').style.display = 'flex';
                 document.getElementById('my-dot').className = 'dot c' + players[myId].color;
                 
-                if (localData.host === myId) {
-                    document.getElementById('admin-panel').style.display = 'block';
-                    document.getElementById('host-reset-btn').style.display = 'block';
-                } else {
-                    document.getElementById('admin-panel').style.display = 'none';
-                    document.getElementById('host-reset-btn').style.display = 'none';
-                }
+                // Lógica de Host
+                const isHost = localData.host === myId;
+                document.getElementById('admin-panel').style.display = isHost ? 'block' : 'none';
+                document.getElementById('host-reset-win').style.display = isHost ? 'block' : 'none';
                 
                 checkVictory(keys);
                 renderBoard(keys);
-                renderKicks(keys);
+                if (isHost) renderKicks(keys);
             } else {
                 renderSelector();
             }
@@ -128,11 +130,13 @@
 
         function renderBoard(keys) {
             const b = document.getElementById('board');
+            if (!localData.tablero) return;
             b.innerHTML = '';
             localData.tablero.forEach((fila, r) => {
                 fila.forEach((color, c) => {
                     const m = document.createElement('div');
                     m.className = 'marble c' + color + (color === 0 ? ' stomped' : '');
+                    
                     keys.forEach(id => {
                         const p = localData.players[id];
                         if (p.pos.r === r && p.pos.c === c) {
@@ -146,17 +150,34 @@
                     b.appendChild(m);
                 });
             });
+
             const actualId = keys[localData.turno];
-            document.getElementById('status-msg').innerText = (actualId === myId) ? "⭐ TU TURNO ⭐" : "Turno de P" + (localData.players[actualId]?.pNum || "?");
-            if (actualId === myId) validarDerrota(myId, keys);
+            const statusEl = document.getElementById('status-msg');
+            if (actualId === myId) {
+                statusEl.innerText = "⭐ TU TURNO ⭐";
+                statusEl.style.color = "var(--accent)";
+            } else {
+                statusEl.innerText = "Turno de P" + (localData.players[actualId]?.pNum || "?");
+                statusEl.style.color = "white";
+            }
         }
 
         function mover(r, c, keys) {
             const p = localData.players[myId];
-            if (keys[localData.turno] !== myId || p.status === 'eliminated') return;
+            const actualId = keys[localData.turno];
+            
+            // VALIDACIÓN DE TURNO ESTRICTA
+            if (actualId !== myId || p.status === 'eliminated') return;
+
             const esAdy = Math.abs(p.pos.r - r) <= 1 && Math.abs(p.pos.c - c) <= 1;
-            if (p.pos.r === -1) { if (r !== 0 && r !== 9 && c !== 0 && c !== 9) return; }
-            else if (!esAdy && localData.tablero[r][c] !== p.color) return;
+            
+            // Regla de entrada
+            if (p.pos.r === -1) {
+                if (r !== 0 && r !== 9 && c !== 0 && c !== 9) return;
+            } else {
+                // Regla de movimiento (Adyacente o salto a tu color)
+                if (!esAdy && localData.tablero[r][c] !== p.color) return;
+            }
             
             let nt = JSON.parse(JSON.stringify(localData.tablero));
             const target = nt[r][c];
@@ -167,6 +188,7 @@
                 nt[rr][cc] = 0;
                 hundir(rr + 1, cc); hundir(rr - 1, cc); hundir(rr, cc + 1); hundir(rr, cc - 1);
             };
+            
             hundir(r, c);
             ref.update({ tablero: nt, [`players/${myId}/pos`]: {r, c} });
             pasarTurno(keys);
@@ -174,33 +196,17 @@
 
         function pasarTurno(keys) {
             let n = (localData.turno + 1) % keys.length;
-            while (localData.players[keys[n]].status === 'eliminated' && keys.filter(k=>localData.players[k].status==='playing').length > 1) {
+            // Saltar jugadores eliminados
+            let attempts = 0;
+            while (localData.players[keys[n]].status === 'eliminated' && attempts < keys.length) {
                 n = (n + 1) % keys.length;
+                attempts++;
             }
             ref.child('turno').set(n);
         }
 
-        function validarDerrota(id, keys) {
-            const p = localData.players[id];
-            if (p.pos.r === -1) return;
-            let canMove = false;
-            for(let r=0; r<10; r++) {
-                for(let c=0; c<10; c++) {
-                    const esAdy = Math.abs(p.pos.r - r) <= 1 && Math.abs(p.pos.c - c) <= 1;
-                    if ((esAdy || localData.tablero[r][c] === p.color) && localData.tablero[r][c] !== 0) {
-                        canMove = true; break;
-                    }
-                }
-                if(canMove) break;
-            }
-            if (!canMove) {
-                ref.child('players/'+id+'/status').set('eliminated');
-                pasarTurno(keys);
-            }
-        }
-
         function checkVictory(keys) {
-            const active = keys.filter(k => localData.players[k].status === 'playing');
+            const active = keys.filter(k => localData.players[k] && localData.players[k].status === 'playing');
             if (active.length === 1 && keys.length > 1) {
                 document.getElementById('win-screen').style.display = 'flex';
                 document.getElementById('winner-text').innerText = '🏆 P' + localData.players[active[0]].pNum + ' GANA';
@@ -215,8 +221,8 @@
             keys.forEach(id => {
                 if (id !== myId) {
                     const b = document.createElement('button');
-                    b.innerText = 'X P' + localData.players[id].pNum;
-                    b.style = "background:red; color:white; border:none; padding:8px; border-radius:4px; font-size:10px;";
+                    b.innerText = 'EXPULSAR P' + localData.players[id].pNum;
+                    b.style = "background:var(--loss); color:white; border:none; padding:5px 10px; border-radius:4px; font-size:9px; white-space:nowrap;";
                     b.onclick = () => ref.child('players/'+id).remove();
                     list.appendChild(b);
                 }
@@ -227,15 +233,18 @@
             const nt = Array.from({length:10}, () => Array.from({length:10}, () => Math.floor(Math.random()*6)+1));
             const keys = Object.keys(localData.players);
             let up = { tablero: nt, turno: 0 };
-            keys.forEach(id => { up[`players/${id}/pos`] = {r:-1, c:-1}; up[`players/${id}/status`] = 'playing'; });
+            keys.forEach(id => { 
+                up[`players/${id}/pos`] = {r:-1, c:-1}; 
+                up[`players/${id}/status`] = 'playing'; 
+            });
             ref.update(up);
         }
 
         function salir() {
+            const keys = Object.keys(localData.players);
             if (localData.host === myId) {
-                const keys = Object.keys(localData.players);
-                if (keys.length > 1) ref.child('host').set(keys.find(k => k !== myId));
-                else ref.child('host').set("");
+                const nextHost = keys.find(k => k !== myId);
+                ref.child('host').set(nextHost || "");
             }
             ref.child('players/'+myId).remove().then(() => location.reload());
         }
