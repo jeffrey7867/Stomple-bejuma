@@ -3,18 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>STOMPLE PRO - CONTROL DE HOST</title>
+    <title>STOMPLE PRO - UNESR FINAL</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
         :root { --bg: #0f172a; --accent: #38bdf8; --admin: #f59e0b; --loss: #ef4444; --win: #22c55e; }
         body { font-family: sans-serif; background: var(--bg); color: white; margin: 0; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
         
-        /* Interfaz Superior */
         #top-bar { padding: 10px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; background: rgba(0,0,0,0.2); }
         .dot { width: 15px; height: 15px; border-radius: 50%; border: 2px solid white; display: inline-block; }
         
-        /* Tablero Optimizado para Redmi Note 13 */
         #board { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; width: 92vw; max-width: 380px; aspect-ratio: 1/1; margin: 10px auto; background: #1e293b; padding: 10px; border-radius: 12px; }
         .marble { width: 100%; height: 100%; border-radius: 50%; cursor: pointer; position: relative; }
         .c1 { background: radial-gradient(circle, #ff4d4d, #990000) !important; }
@@ -25,11 +23,9 @@
         .c6 { background: radial-gradient(circle, #a6a6a6, #333333) !important; }
         .stomped { background: #0f172a !important; opacity: 0.1; transform: scale(0.6); pointer-events: none; }
 
-        /* Fichas de Jugador */
         .p-token { position: absolute; width: 80%; height: 80%; top: 10%; left: 10%; border: 2px solid white; border-radius: 50%; font-size: 0.6rem; display: flex; align-items: center; justify-content: center; font-weight: bold; box-shadow: 0 0 5px #000; }
         .my-token { border-color: var(--accent); box-shadow: 0 0 10px var(--accent); }
 
-        /* Pantallas de Estado */
         .full-screen { position: fixed; inset: 0; background: var(--bg); z-index: 3000; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
         .btn { padding: 12px 25px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; }
 
@@ -40,7 +36,6 @@
 
     <div id="setup-screen" class="full-screen">
         <h2 style="color: var(--accent);">STOMPLE UNESR</h2>
-        <p>Elige tu color para entrar:</p>
         <div id="color-opts" style="display:grid; grid-template-columns: repeat(3, 1fr); gap:15px; margin: 20px;"></div>
         <button id="join-btn" disabled onclick="unirse()" class="btn" style="background:var(--accent)">ENTRAR A JUGAR</button>
     </div>
@@ -48,20 +43,18 @@
     <div id="win-screen" class="full-screen" style="display:none">
         <h1 style="font-size: 4rem;">🏆</h1>
         <h2 id="winner-text"></h2>
-        <button onclick="reiniciarTodo()" id="host-reset-btn" class="btn" style="display:none; background:var(--win)">NUEVA PARTIDA (SOLO HOST)</button>
+        <button onclick="reiniciarTodo()" id="host-reset-btn" class="btn" style="display:none; background:var(--win)">NUEVA PARTIDA</button>
     </div>
 
     <div id="game-ui" style="display:none; flex-direction: column; height: 100%;">
         <div id="top-bar">
-            <span>Tu color: <span id="my-dot" class="dot"></span></span>
+            <span>Color: <span id="my-dot" class="dot"></span></span>
             <button onclick="salir()" class="btn" style="background:var(--loss); padding: 5px 10px; font-size: 0.7rem; color: white;">SALIR</button>
         </div>
-
         <div id="board"></div>
         <div id="status-msg" style="text-align:center; font-weight:bold; color:var(--accent); margin: 5px;"></div>
-
         <div id="admin-panel">
-            <div style="color:var(--admin); font-size:0.6rem; font-weight:bold; margin-bottom:5px;">CONTROL DEL HOST: EXPULSAR</div>
+            <div style="color:var(--admin); font-size:0.6rem; font-weight:bold; margin-bottom:5px;">HOST: EXPULSAR JUGADORES</div>
             <div id="kick-list" style="display:flex; gap:5px; overflow-x:auto;"></div>
         </div>
     </div>
@@ -69,12 +62,12 @@
     <script>
         const config = { databaseURL: "https://stomple-default-rtdb.firebaseio.com/" };
         if (!firebase.apps.length) firebase.initializeApp(config);
-        const ref = firebase.database().ref('stomple_unesr_v7_final');
+        const ref = firebase.database().ref('stomple_unesr_v8');
 
         let myId = localStorage.getItem('stomple_id') || "U-" + Math.floor(Math.random() * 9999);
         localStorage.setItem('stomple_id', myId);
         let selectedColor = null;
-        let localData = {};
+        let localData = { players: {}, tablero: null, turno: 0, host: "" };
 
         ref.on('value', (snap) => {
             localData = snap.val() || { players: {}, tablero: null, turno: 0, host: "" };
@@ -86,7 +79,6 @@
                 document.getElementById('game-ui').style.display = 'flex';
                 document.getElementById('my-dot').className = 'dot c' + players[myId].color;
                 
-                // Solo el Host ve herramientas especiales
                 if (localData.host === myId) {
                     document.getElementById('admin-panel').style.display = 'block';
                     document.getElementById('host-reset-btn').style.display = 'block';
@@ -124,20 +116,13 @@
 
         async function unirse() {
             let up = {};
-            // Seguridad: El primero en entrar es el Host indiscutible
             if (!localData.host || localData.host === "") {
                 up.host = myId;
-                up.turno = 0; // El host siempre comienza
+                up.turno = 0; 
                 up.tablero = Array.from({length:10}, () => Array.from({length:10}, () => Math.floor(Math.random()*6)+1));
             }
-            
             const pNum = Object.keys(localData.players || {}).length + 1;
-            up['players/' + myId] = { 
-                color: selectedColor, 
-                pos: {r:-1, c:-1}, 
-                pNum: pNum, 
-                status: 'playing' 
-            };
+            up['players/' + myId] = { color: selectedColor, pos: {r:-1, c:-1}, pNum: pNum, status: 'playing' };
             ref.update(up);
         }
 
@@ -162,24 +147,16 @@
                 });
             });
             const actualId = keys[localData.turno];
-            if (actualId === myId) {
-                document.getElementById('status-msg').innerText = "⭐ TU TURNO ⭐";
-                validarDerrota(myId, keys);
-            } else {
-                document.getElementById('status-msg').innerText = "Esperando a P" + (localData.players[actualId]?.pNum || "?");
-            }
+            document.getElementById('status-msg').innerText = (actualId === myId) ? "⭐ TU TURNO ⭐" : "Turno de P" + (localData.players[actualId]?.pNum || "?");
+            if (actualId === myId) validarDerrota(myId, keys);
         }
 
         function mover(r, c, keys) {
             const p = localData.players[myId];
             if (keys[localData.turno] !== myId || p.status === 'eliminated') return;
-            
             const esAdy = Math.abs(p.pos.r - r) <= 1 && Math.abs(p.pos.c - c) <= 1;
-            if (p.pos.r === -1) {
-                if (r !== 0 && r !== 9 && c !== 0 && c !== 9) return;
-            } else if (!esAdy && localData.tablero[r][c] !== p.color) {
-                return;
-            }
+            if (p.pos.r === -1) { if (r !== 0 && r !== 9 && c !== 0 && c !== 9) return; }
+            else if (!esAdy && localData.tablero[r][c] !== p.color) return;
             
             let nt = JSON.parse(JSON.stringify(localData.tablero));
             const target = nt[r][c];
@@ -188,11 +165,9 @@
             const hundir = (rr, cc) => {
                 if (rr < 0 || rr >= 10 || cc < 0 || cc >= 10 || nt[rr][cc] !== target) return;
                 nt[rr][cc] = 0;
-                hundir(rr + 1, cc); hundir(rr - 1, cc);
-                hundir(rr, cc + 1); hundir(rr, cc - 1);
+                hundir(rr + 1, cc); hundir(rr - 1, cc); hundir(rr, cc + 1); hundir(rr, cc - 1);
             };
             hundir(r, c);
-            
             ref.update({ tablero: nt, [`players/${myId}/pos`]: {r, c} });
             pasarTurno(keys);
         }
@@ -240,7 +215,7 @@
             keys.forEach(id => {
                 if (id !== myId) {
                     const b = document.createElement('button');
-                    b.innerText = 'Sacar P' + localData.players[id].pNum;
+                    b.innerText = 'X P' + localData.players[id].pNum;
                     b.style = "background:red; color:white; border:none; padding:8px; border-radius:4px; font-size:10px;";
                     b.onclick = () => ref.child('players/'+id).remove();
                     list.appendChild(b);
@@ -263,377 +238,6 @@
                 else ref.child('host').set("");
             }
             ref.child('players/'+myId).remove().then(() => location.reload());
-        }
-    </script>
-</body>
-</html>
-                const isTaken = taken.includes(i);
-                const opt = document.createElement('div');
-                opt.className = `marble c${i} ${isTaken ? 'stomped' : ''}`;
-                opt.style.width = "60px"; opt.style.height = "60px";
-                if (!isTaken) opt.onclick = () => {
-                    selectedColor = i;
-                    document.getElementById('join-btn').disabled = false;
-                    container.querySelectorAll('.marble').forEach(m => m.style.boxShadow = "none");
-                    opt.style.boxShadow = "0 0 15px white";
-                };
-                container.appendChild(opt);
-            }
-        }
-
-        async function unirse() {
-            let updates = {};
-            if (!gameState.tablero) {
-                updates['tablero'] = Array.from({length:10}, () => Array.from({length:10}, () => Math.floor(Math.random()*6)+1));
-                updates['host'] = myId;
-                updates['turno'] = 0;
-            }
-            updates[`players/${myId}`] = { 
-                color: selectedColor, 
-                pos: {r:-1, c:-1}, 
-                pNum: Object.keys(gameState.players || {}).length + 1,
-                status: 'playing' 
-            };
-            db.update(updates);
-        }
-
-        function renderGame(keys) {
-            const boardEl = document.getElementById('board');
-            boardEl.innerHTML = '';
-            
-            gameState.tablero.forEach((fila, r) => {
-                fila.forEach((color, c) => {
-                    const m = document.createElement('div');
-                    m.className = `marble c${color} ${color === 0 ? 'stomped' : ''}`;
-                    keys.forEach(id => {
-                        const p = gameState.players[id];
-                        if (p.pos.r === r && p.pos.c === c) {
-                            const t = document.createElement('div');
-                            t.className = `p-token c${p.color} ${id === myId ? 'my-token' : ''}`;
-                            t.innerText = id === myId ? 'YO' : 'P' + p.pNum;
-                            m.appendChild(t);
-                        }
-                    });
-                    m.onclick = () => mover(r, c, keys);
-                    boardEl.appendChild(m);
-                });
-            });
-
-            const turnoId = keys[gameState.turno];
-            if (turnoId === myId) {
-                document.getElementById('msg').innerText = "⭐ TU TURNO ⭐";
-                validarMovimientos(myId, keys);
-            } else {
-                document.getElementById('msg').innerText = `Turno de P${gameState.players[turnoId]?.pNum}`;
-            }
-        }
-
-        function validarMovimientos(id, keys) {
-            const p = gameState.players[id];
-            if (p.pos.r === -1 || p.status === 'eliminated') return;
-
-            let puedeMover = false;
-            for (let r = 0; r < 10; r++) {
-                for (let c = 0; c < 10; c++) {
-                    const esAdy = Math.abs(p.pos.r - r) <= 1 && Math.abs(p.pos.c - c) <= 1;
-                    const esMismoColor = gameState.tablero[r][c] === p.color;
-                    if ((esAdy || esMismoColor) && gameState.tablero[r][c] !== 0) {
-                        puedeMover = true; break;
-                    }
-                }
-                if(puedeMover) break;
-            }
-
-            if (!puedeMover) {
-                db.child(`players/${id}/status`).set('eliminated');
-                pasarTurno(keys);
-            }
-        }
-
-        function mover(r, c, keys) {
-            if (keys[gameState.turno] !== myId || gameState.players[myId].status === 'eliminated') return;
-            const p = gameState.players[myId];
-            const esAdy = Math.abs(p.pos.r - r) <= 1 && Math.abs(p.pos.c - c) <= 1;
-
-            if (p.pos.r === -1) { if (r!==0 && r!==9 && c!==0 && c!==9) return; }
-            else if (!esAdy && gameState.tablero[r][c] !== p.color) return;
-
-            let nt = JSON.parse(JSON.stringify(gameState.tablero));
-            const target = nt[r][c];
-            if (target === 0) return;
-
-            const hundir = (row, col) => {
-                if (row<0||row>=10||col<0||col>=10||nt[row][col]!==target||nt[row][col]===0) return;
-                nt[row][col] = 0;
-                hundir(row+1,col); hundir(row-1,col); hundir(row,col+1); hundir(row,col-1);
-            };
-            hundir(r, c);
-            db.update({ tablero: nt, [`players/${myId}/pos`]: {r, c} });
-            pasarTurno(keys);
-        }
-
-        function pasarTurno(keys) {
-            let next = (gameState.turno + 1) % keys.length;
-            let intentos = 0;
-            while (gameState.players[keys[next]].status === 'eliminated' && intentos < keys.length) {
-                next = (next + 1) % keys.length;
-                intentos++;
-            }
-            db.child('turno').set(next);
-        }
-
-        function checkWinStatus(keys) {
-            const activos = keys.filter(id => gameState.players[id].status === 'playing');
-            if (activos.length === 1 && keys.length > 1) {
-                document.getElementById('win-screen').style.display = 'flex';
-                document.getElementById('winner-msg').innerText = `¡P${gameState.players[activos[0]].pNum} ES EL GANADOR!`;
-            } else {
-                document.getElementById('win-screen').style.display = 'none';
-            }
-        }
-
-        function renderKickList(keys) {
-            const list = document.getElementById('kick-list');
-            list.innerHTML = '';
-            keys.forEach(id => {
-                if (id !== myId) {
-                    const b = document.createElement('button');
-                    b.innerText = `Sacar P${gameState.players[id].pNum}`;
-                    b.style = "background:red; color:white; border:none; padding:5px; border-radius:4px; font-size:0.6rem; white-space:nowrap;";
-                    b.onclick = () => db.child('players/'+id).remove();
-                    list.appendChild(b);
-                }
-            });
-        }
-
-        function resetGame() {
-            const t = Array.from({length:10}, () => Array.from({length:10}, () => Math.floor(Math.random()*6)+1));
-            const keys = Object.keys(gameState.players);
-            let up = { tablero: t, turno: 0 };
-            keys.forEach(id => {
-                up[`players/${id}/pos`] = {r:-1, c:-1};
-                up[`players/${id}/status`] = 'playing';
-            });
-            db.update(up);
-        }
-    </script>
-</body>
-</html>
-                document.getElementById('game-ui').style.display = 'flex';
-                if (gameState.host === myId) document.getElementById('admin-panel').style.display = 'block';
-                renderGame();
-                renderChat();
-                renderKickTools();
-            } else {
-                renderSelector();
-            }
-        });
-
-        function renderSelector() {
-            const container = document.getElementById('color-options');
-            container.innerHTML = '';
-            const taken = Object.values(gameState.players || {}).map(p => p.color);
-            for (let i = 1; i <= 6; i++) {
-                const isTaken = taken.includes(i);
-                const opt = document.createElement('div');
-                opt.className = `marble c${i} ${isTaken ? 'stomped' : ''}`;
-                opt.style.width = "60px"; opt.style.height = "60px";
-                if (!isTaken) {
-                    opt.onclick = () => {
-                        selectedColor = i;
-                        document.getElementById('start-btn').disabled = false;
-                        container.querySelectorAll('.marble').forEach(m => m.style.boxShadow = "none");
-                        opt.style.boxShadow = "0 0 15px white";
-                    };
-                }
-                container.appendChild(opt);
-            }
-        }
-
-        async function unirse() {
-            let updates = {};
-            if (!gameState.tablero) {
-                updates['tablero'] = Array.from({length:10}, () => Array.from({length:10}, () => Math.floor(Math.random()*6)+1));
-                updates['host'] = myId;
-                updates['turno'] = 0;
-            }
-            const pNum = Object.keys(gameState.players || {}).length + 1;
-            updates[`players/${myId}`] = { color: selectedColor, pos: {r:-1, c:-1}, pNum: pNum };
-            db.update(updates);
-        }
-
-        function renderGame() {
-            const boardEl = document.getElementById('board');
-            boardEl.innerHTML = '';
-            const keys = Object.keys(gameState.players);
-            
-            const scoreEl = document.getElementById('scoreboard');
-            scoreEl.innerHTML = keys.map((id, idx) => {
-                const p = gameState.players[id];
-                return `<div style="padding: 2px 8px; border-bottom: 2px solid ${gameState.turno === idx ? 'var(--accent)' : 'transparent'}">P${p.pNum}</div>`;
-            }).join('');
-
-            gameState.tablero.forEach((fila, r) => {
-                fila.forEach((color, c) => {
-                    const m = document.createElement('div');
-                    m.className = `marble c${color} ${color === 0 ? 'stomped' : ''}`;
-                    keys.forEach(id => {
-                        const p = gameState.players[id];
-                        if (p.pos.r === r && p.pos.c === c) {
-                            const t = document.createElement('div');
-                            t.className = `p-token c${p.color} ${id === myId ? 'my-token' : ''}`;
-                            t.innerText = id === myId ? 'YO' : 'P' + p.pNum;
-                            m.appendChild(t);
-                        }
-                    });
-                    m.onclick = () => mover(r, c, keys);
-                    boardEl.appendChild(m);
-                });
-            });
-            document.getElementById('msg').innerText = (keys[gameState.turno] === myId) ? "⭐ TU TURNO ⭐" : "Esperando movimiento...";
-        }
-
-        function mover(r, c, keys) {
-            if (keys[gameState.turno] !== myId) return;
-            const p = gameState.players[myId];
-            const esAdy = Math.abs(p.pos.r - r) <= 1 && Math.abs(p.pos.c - c) <= 1;
-
-            if (p.pos.r === -1) { if (r!==0 && r!==9 && c!==0 && c!==9) return; }
-            else if (!esAdy && gameState.tablero[r][c] !== p.color) return;
-
-            let nt = JSON.parse(JSON.stringify(gameState.tablero));
-            const target = nt[r][c];
-            const hundir = (row, col) => {
-                if (row<0||row>=10||col<0||col>=10||nt[row][col]!==target||nt[row][col]===0) return;
-                nt[row][col] = 0;
-                hundir(row+1,col); hundir(row-1,col); hundir(row,col+1); hundir(row,col-1);
-            };
-            hundir(r, c);
-            db.update({ tablero: nt, turno: (gameState.turno + 1) % keys.length, [`players/${myId}/pos`]: {r, c} });
-        }
-
-        function renderKickTools() {
-            const container = document.getElementById('kick-tools');
-            container.innerHTML = '';
-            Object.keys(gameState.players).forEach(id => {
-                if (id !== myId) {
-                    const b = document.createElement('button');
-                    b.innerText = `Sacar P${gameState.players[id].pNum}`;
-                    b.style = "background:red; color:white; border:none; padding:4px 8px; border-radius:4px; font-size:0.6rem;";
-                    b.onclick = () => db.child('players/'+id).remove();
-                    container.appendChild(b);
-                }
-            });
-        }
-
-        function resetBoard() {
-            const t = Array.from({length:10}, () => Array.from({length:10}, () => Math.floor(Math.random()*6)+1));
-            db.update({ tablero: t, turno: 0 });
-        }
-
-        function sendEmote(e) { db.child('lastEmote').set(e + "_" + Math.random()); }
-        function showFloatingEmote(e) {
-            const el = document.createElement('div'); el.className = 'emote-pop'; el.innerText = e;
-            document.getElementById('emote-layer').appendChild(el);
-            setTimeout(() => el.remove(), 2000);
-        }
-
-        function sendChat() {
-            const i = document.getElementById('chat-input');
-            if (!i.value) return;
-            const c = gameState.chat || [];
-            c.push(`P${gameState.players[myId].pNum}: ${i.value}`);
-            if (c.length > 8) c.shift();
-            db.child('chat').set(c);
-            i.value = '';
-        }
-
-        function renderChat() {
-            const b = document.getElementById('chat-box');
-            b.innerHTML = (gameState.chat || []).map(m => `<div>${m}</div>`).join('');
-            b.scrollTop = b.scrollHeight;
-        }
-
-        function salir() { db.child('players/'+myId).remove().then(() => location.reload()); }
-    </script>
-</body>
-</html>
-            let updates = {};
-            if (!localState.tablero) {
-                const nuevoTab = Array.from({length:10}, () => Array.from({length:10}, () => Math.floor(Math.random()*6)+1));
-                updates['tablero'] = nuevoTab;
-                updates['host'] = myId;
-                updates['turno'] = 0;
-            }
-            const pNum = Object.keys(localState.players).length + 1;
-            updates[`players/${myId}`] = { color: selectedColor, pos: {r:-1, c:-1}, pNum: pNum };
-            await db.update(updates);
-        }
-
-        function renderGame() {
-            const boardEl = document.getElementById('board');
-            boardEl.innerHTML = '';
-            const keys = Object.keys(localState.players);
-
-            localState.tablero.forEach((fila, r) => {
-                fila.forEach((color, c) => {
-                    const m = document.createElement('div');
-                    m.className = `marble c${color} ${color === 0 ? 'stomped' : ''}`;
-                    
-                    keys.forEach(id => {
-                        const p = localState.players[id];
-                        if (p.pos.r === r && p.pos.c === c) {
-                            const t = document.createElement('div');
-                            t.style = "width:80%; height:80%; border:2px solid white; border-radius:50%; margin:10%; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:bold;";
-                            t.innerText = id === myId ? 'YO' : 'P' + p.pNum;
-                            if(id === myId) t.style.boxShadow = "0 0 10px #38bdf8";
-                            m.appendChild(t);
-                        }
-                    });
-
-                    m.onclick = () => mover(r, c, keys);
-                    boardEl.appendChild(m);
-                });
-            });
-            document.getElementById('msg').innerText = (keys[localState.turno] === myId) ? "⭐ ES TU TURNO ⭐" : "Esperando a otro jugador...";
-        }
-
-        function mover(r, c, keys) {
-            if (keys[localState.turno] !== myId) return;
-            const p = localState.players[myId];
-            const esAdy = Math.abs(p.pos.r - r) <= 1 && Math.abs(p.pos.c - c) <= 1;
-
-            if (p.pos.r === -1) { if (r!==0 && r!==9 && c!==0 && c!==9) return; }
-            else if (!esAdy && localState.tablero[r][c] !== p.color) return;
-
-            let nt = JSON.parse(JSON.stringify(localState.tablero));
-            const target = nt[r][c];
-            const hundir = (row, col) => {
-                if (row<0||row>=10||col<0||col>=10||nt[row][col]!==target||nt[row][col]===0) return;
-                nt[row][col] = 0;
-                hundir(row+1,col); hundir(row-1,col); hundir(row,col+1); hundir(row,col-1);
-            };
-            hundir(r, c);
-            db.update({ tablero: nt, turno: (localState.turno + 1) % keys.length, [`players/${myId}/pos`]: {r, c} });
-        }
-
-        function renderKickList() {
-            const list = document.getElementById('kick-list');
-            list.innerHTML = '';
-            Object.keys(localState.players).forEach(id => {
-                if (id !== myId) {
-                    const b = document.createElement('button');
-                    b.innerText = `X P${localState.players[id].pNum}`;
-                    b.style = "background:red; color:white; border:none; padding:4px; border-radius:4px; font-size:10px;";
-                    b.onclick = () => db.child('players/'+id).remove();
-                    list.appendChild(b);
-                }
-            });
-        }
-
-        function resetBoard() {
-            const t = Array.from({length:10}, () => Array.from({length:10}, () => Math.floor(Math.random()*6)+1));
-            db.update({ tablero: t, turno: 0 });
         }
     </script>
 </body>
