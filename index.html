@@ -132,7 +132,7 @@
     <div id="game-ui" style="display:none; flex-direction: column; height: 100%; position: relative;">
         <div id="top-bar">
             <span>Color: <span id="my-dot" class="dot"></span></span>
-            <button onclick="salirConConfirm()" class="btn" style="background:var(--loss); padding: 5px 10px; font-size: 0.7rem;">SALIR</button>
+            <button onclick="location.reload()" class="btn" style="background:var(--loss); padding: 5px 10px; font-size: 0.7rem;">SALIR</button>
         </div>
         <div id="alive-count">Jugadores vivos: <span id="alive-num">?</span></div>
         <div id="board"></div>
@@ -146,7 +146,6 @@
             </div>
         </div>
 
-        <!-- Botón y picker de reacciones -->
         <button id="reaction-btn" onclick="toggleEmojiPicker()">😀</button>
         <div id="emoji-picker">
             <span onclick="sendReaction('🔥')">🔥</span>
@@ -160,7 +159,6 @@
         </div>
     </div>
 
-    <!-- Sonidos royalty-free -->
     <audio id="sound-stomp" preload="auto">
         <source src="https://assets.mixkit.co/sfx/preview/mixkit-apocalyptic-stomp-impact-1219.mp3" type="audio/mpeg">
     </audio>
@@ -173,7 +171,7 @@
 
         let myId = localStorage.getItem('stomple_id');
         if (!myId) {
-            myId = "U-" + (crypto?.randomUUID?.() || Date.now().toString(36) + Math.random().toString(36).slice(2, 10)).slice(0,13);
+            myId = "U-" + Math.random().toString(36).substr(2, 9);
             localStorage.setItem('stomple_id', myId);
         }
 
@@ -183,22 +181,14 @@
         ref.on('value', (snap) => {
             const data = snap.val() || { players: {}, tablero: null, turno: 0, host: "" };
             localData = data;
-
             const players = data.players || {};
             const playerKeys = Object.keys(players);
 
             if (playerKeys.length === 0) {
-                const newBoard = Array.from({length:10}, () => Array.from({length:10}, () => Math.floor(Math.random()*6)+1));
-                ref.set({
-                    tablero: newBoard,
-                    turno: 0,
-                    host: "",
-                    players: {},
-                    reacciones: null
-                }).catch(console.error);
                 document.getElementById('setup-screen').style.display = 'flex';
                 document.getElementById('game-ui').style.display = 'none';
                 document.getElementById('win-screen').style.display = 'none';
+                renderSelector();
                 return;
             }
 
@@ -216,21 +206,20 @@
                 renderBoard(playerKeys);
                 if (isHost) renderKicks(playerKeys);
             } else {
+                document.getElementById('setup-screen').style.display = 'flex';
+                document.getElementById('game-ui').style.display = 'none';
                 renderSelector();
             }
         });
 
-        // Reacciones en tiempo real
-        reactionsRef.limitToLast(8).on('child_added', (snap) => {
+        reactionsRef.limitToLast(5).on('child_added', (snap) => {
             const reaction = snap.val();
             if (!reaction?.emoji) return;
-
             const div = document.createElement('div');
             div.className = 'reaction-emoji';
             div.textContent = reaction.emoji;
             document.getElementById('board').appendChild(div);
-
-            setTimeout(() => div.remove(), 3500);
+            setTimeout(() => div.remove(), 2800);
         });
 
         function toggleEmojiPicker() {
@@ -239,20 +228,7 @@
         }
 
         function sendReaction(emoji) {
-            reactionsRef.push({
-                emoji,
-                sender: myId,
-                timestamp: firebase.database.ServerValue.TIMESTAMP
-            });
-
-            // Limpieza automática (mantener \~20 últimas)
-            reactionsRef.orderByChild('timestamp').limitToLast(21).once('value', snap => {
-                if (snap.numChildren() > 20) {
-                    const firstKey = Object.keys(snap.val())[0];
-                    reactionsRef.child(firstKey).remove();
-                }
-            });
-
+            reactionsRef.push({ emoji, timestamp: firebase.database.ServerValue.TIMESTAMP });
             toggleEmojiPicker();
         }
 
@@ -284,51 +260,38 @@
 
         async function unirse() {
             if (!selectedColor) return;
-            try {
-                await ref.transaction(current => {
-                    if (!current) current = { players: {}, tablero: null, turno: 0, host: "" };
-                    if (current.players?.[myId]) return;
-                    const updates = {};
-                    if (!current.host || current.host === "") {
-                        updates.host = myId;
-                        updates.turno = 0;
-                        updates.tablero = Array.from({length:10}, () => Array.from({length:10}, () => Math.floor(Math.random()*6)+1));
-                    }
-                    const playerCount = Object.keys(current.players || {}).length;
-                    updates[`players/${myId}`] = {
-                        color: selectedColor,
-                        pos: { r: -1, c: -1 },
-                        pNum: playerCount + 1,
-                        status: 'playing'
-                    };
-                    return { ...current, ...updates };
-                });
-            } catch (err) {
-                console.error("Error al unirse:", err);
-                alert("No se pudo entrar. Intenta de nuevo.");
+            const updates = {};
+            if (!localData.host) {
+                updates.host = myId;
+                updates.turno = 0;
+                updates.tablero = Array.from({length:10}, () => Array.from({length:10}, () => Math.floor(Math.random()*6)+1));
             }
+            updates[`players/${myId}`] = {
+                color: selectedColor,
+                pos: { r: -1, c: -1 },
+                pNum: Object.keys(localData.players || {}).length + 1,
+                status: 'playing'
+            };
+            ref.update(updates);
         }
 
         function renderBoard(keys) {
             const b = document.getElementById('board');
             if (!localData.tablero) return;
             b.innerHTML = '';
-
             localData.tablero.forEach((fila, r) => {
                 fila.forEach((color, c) => {
                     const m = document.createElement('div');
                     m.className = 'marble c' + color + (color === 0 ? ' stomped' : '');
-
                     keys.forEach(id => {
                         const p = localData.players[id];
-                        if (p?.pos?.r === r && p?.pos?.c === c) {
+                        if (p?.pos?.r === r && p?.pos?.c === c && p.status === 'playing') {
                             const t = document.createElement('div');
                             t.className = 'p-token' + (id === myId ? ' my-token' : '');
                             t.innerText = id === myId ? 'YO' : 'P' + p.pNum;
                             m.appendChild(t);
                         }
                     });
-
                     m.onclick = () => mover(r, c, keys);
                     b.appendChild(m);
                 });
@@ -336,101 +299,58 @@
 
             const actualId = keys[localData.turno % keys.length];
             const statusEl = document.getElementById('status-msg');
-            const me = localData.players[myId];
-
-            if (actualId === myId && me?.status !== 'eliminated') {
+            if (actualId === myId) {
                 statusEl.innerText = "⭐ ¡TU TURNO! ⭐";
                 statusEl.style.color = "var(--accent)";
-            } else if (me?.status === 'eliminated') {
-                statusEl.innerText = "Estás eliminado 😔";
-                statusEl.style.color = "var(--loss)";
             } else {
-                const turnoPlayer = localData.players[actualId];
-                statusEl.innerText = `Turno de P${turnoPlayer?.pNum || "?"}`;
+                statusEl.innerText = `Turno de P${localData.players[actualId]?.pNum || "?"}`;
                 statusEl.style.color = "white";
             }
         }
 
-        function playSound(type) {
-            const el = document.getElementById(`sound-${type}`);
-            if (el) {
-                el.currentTime = 0;
-                el.volume = 0.5;
-                el.play().catch(() => {});
-            }
-        }
-
         function mover(r, c, keys) {
+            const b = document.getElementById('board');
             const p = localData.players[myId];
             if (!p || p.status === 'eliminated') return;
-
-            const actualId = keys[localData.turno % keys.length];
-            if (actualId !== myId) return;
+            if (keys[localData.turno % keys.length] !== myId) return;
 
             const esAdy = Math.abs(p.pos.r - r) <= 1 && Math.abs(p.pos.c - c) <= 1;
-
             if (p.pos.r === -1) {
                 if (r !== 0 && r !== 9 && c !== 0 && c !== 9) return;
-            } else if (!esAdy && localData.tablero[r][c] !== p.color) {
-                return;
-            }
+            } else if (!esAdy && localData.tablero[r][c] !== p.color) return;
 
             const target = localData.tablero[r][c];
             if (target === 0) return;
 
             const nt = localData.tablero.map(row => [...row]);
-
-            const crushedCells = [];
             const stack = [[r, c]];
             while (stack.length) {
                 const [rr, cc] = stack.pop();
                 if (rr < 0 || rr >= 10 || cc < 0 || cc >= 10 || nt[rr][cc] !== target) continue;
                 nt[rr][cc] = 0;
-                crushedCells.push({r: rr, c: cc});
                 stack.push([rr+1, cc], [rr-1, cc], [rr, cc+1], [rr, cc-1]);
             }
 
-            playSound('stomp');
+            document.getElementById('sound-stomp').play().catch(()=>{});
+            b.classList.add('shake-once');
+            setTimeout(() => b.classList.remove('shake-once'), 400);
 
-            crushedCells.forEach(pos => {
-                const idx = pos.r * 10 + pos.c;
-                const cell = b.children[idx];
-                if (cell) {
-                    cell.classList.add('crushing');
-                    setTimeout(() => {
-                        cell.classList.remove('crushing');
-                        cell.classList.add('stomped');
-                    }, 700);
-                }
-            });
-
-            document.getElementById('board').classList.add('shake-once');
-            setTimeout(() => document.getElementById('board').classList.remove('shake-once'), 500);
-
-            ref.update({ 
-                tablero: nt, 
-                [`players/${myId}/pos`]: { r, c } 
-            }).then(() => pasarTurno(keys));
+            ref.update({ tablero: nt, [`players/${myId}/pos`]: { r, c } });
+            pasarTurno(keys);
         }
 
         function pasarTurno(keys) {
-            let n = (localData.turno + 1) % keys.length;
-            let attempts = 0;
-            while (localData.players[keys[n]]?.status === 'eliminated' && attempts < keys.length + 1) {
-                n = (n + 1) % keys.length;
-                attempts++;
-            }
-            ref.child('turno').set(n);
+            let next = (localData.turno + 1) % keys.length;
+            ref.child('turno').set(next);
         }
 
         function checkVictory(keys) {
             const active = keys.filter(k => localData.players[k]?.status === 'playing');
-            const winEl = document.getElementById('win-screen');
             if (active.length === 1 && keys.length > 1) {
-                winEl.style.display = 'flex';
+                document.getElementById('win-screen').style.display = 'flex';
                 document.getElementById('winner-text').innerText = `🏆 P${localData.players[active[0]].pNum} GANA`;
             } else {
-                winEl.style.display = 'none';
+                document.getElementById('win-screen').style.display = 'none';
             }
         }
 
@@ -440,8 +360,8 @@
             keys.forEach(id => {
                 if (id !== myId) {
                     const btn = document.createElement('button');
-                    btn.innerText = `EXPULSAR P${localData.players[id].pNum}`;
-                    btn.style.cssText = "background:var(--loss); color:white; border:none; padding:5px 10px; border-radius:4px; font-size:9px; white-space:nowrap;";
+                    btn.innerText = `X P${localData.players[id].pNum}`;
+                    btn.style.cssText = "background:var(--loss); color:white; border:none; padding:4px; border-radius:4px; font-size:10px;";
                     btn.onclick = () => ref.child('players/'+id).remove();
                     list.appendChild(btn);
                 }
@@ -450,25 +370,13 @@
 
         function reiniciarTodo() {
             if (localData.host !== myId) return;
-            const nt = Array.from({length:10}, () => Array.from({length:10}, () => Math.floor(Math.random()*6)+1));
-            const updates = { tablero: nt, turno: 0 };
-            Object.keys(localData.players || {}).forEach(id => {
+            const newBoard = Array.from({length:10}, () => Array.from({length:10}, () => Math.floor(Math.random()*6)+1));
+            const updates = { tablero: newBoard, turno: 0 };
+            Object.keys(localData.players).forEach(id => {
                 updates[`players/${id}/pos`] = { r: -1, c: -1 };
                 updates[`players/${id}/status`] = 'playing';
             });
             ref.update(updates);
-        }
-
-        function salirConConfirm() {
-            if (confirm("¿Seguro que quieres salir?")) salir();
-        }
-
-        function salir() {
-            if (localData.host === myId) {
-                const next = Object.keys(localData.players || {}).find(k => k !== myId) || "";
-                ref.child('host').set(next);
-            }
-            ref.child('players/' + myId).remove().then(() => location.reload());
         }
     </script>
 </body>
