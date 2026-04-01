@@ -1,2 +1,2 @@
-# Stomple-bejuma
+# Stomple-web
 Juego entre amigos 
